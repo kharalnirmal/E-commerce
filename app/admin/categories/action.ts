@@ -13,7 +13,7 @@ export async function createCategory(
   await requireAdmin();
 
   const value = formData.get("name");
-  const name = typeof value === "string" ? value.trim() : "";
+  const name = typeof value === "string" ? value.trim().toLowerCase() : "";
 
   if (name.length < 2 || name.length > 80) {
     return { message: "Name must be between 2 and 80 characters." };
