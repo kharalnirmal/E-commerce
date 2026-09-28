@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { HeroCarousel } from "@/app/components/hero-carousel";
 import { OpeningSequence } from "@/app/components/opening-sequence";
 import { ProductCard } from "@/app/components/product-card";
 import { RemoteImage } from "@/app/components/remote-image";
@@ -67,27 +67,7 @@ export default async function Home() {
   return (
     <main>
       <OpeningSequence />
-      <section className="shell hero-grid">
-        <div className="hero-copy">
-          <h1 className="display" data-testid="kinetic-hero">Goods for<br />daily use.</h1>
-          <p className="hero-intro">Shop clothing, homeware, accessories, and outdoor goods from independent makers.</p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/products" className="button-primary">Shop the catalog</Link>
-            <Link href="#collections" className="button-secondary">Browse collections</Link>
-          </div>
-        </div>
-        <div className="hero-image">
-          <Image
-            src="https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=85"
-            alt="A busy market street in Nepal"
-            fill
-            preload
-            sizes="(max-width: 767px) calc(100vw - 2rem), (max-width: 1024px) 38vw, 30rem"
-            className="object-cover"
-          />
-          <span className="image-caption">Nepal</span>
-        </div>
-      </section>
+      <HeroCarousel />
 
       <ProductSection id="featured" title="Featured now" description="Selected products from the current catalog." products={featured} />
       <ProductSection id="arrivals" title="New arrivals" description="Recently added products." products={arrivals} tone="muted" />

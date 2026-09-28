@@ -5,28 +5,52 @@ import { GlobalSearch } from "./global-search";
 
 export function StorefrontHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--line-soft)] bg-[color-mix(in_srgb,var(--paper)_94%,transparent)] backdrop-blur-md">
-      <div className="shell flex min-h-16 items-center gap-6">
+    <header className="storefront-header">
+      <div className="shell storefront-nav">
         <Link href="/" className="wordmark" aria-label="CHOWK home">
           CHOWK
         </Link>
-        <nav className="hidden items-center gap-7 md:flex" aria-label="Main navigation">
-          <Link href="/products" className="utility-label">Shop</Link>
-          <Link href="/#featured" className="utility-label">Featured</Link>
-          <Link href="/#collections" className="utility-label">Collections</Link>
+        <nav className="desktop-primary-nav" aria-label="Main navigation">
+          <Link href="/products">Shop</Link>
+          <Link href="/#featured">Featured</Link>
+          <Link href="/#collections">Collections</Link>
         </nav>
-        <div className="ml-auto hidden items-center gap-3 md:flex">
+        <div className="desktop-nav-actions">
           <GlobalSearch />
-          <Link href="/cart" className="utility-label px-2">Cart</Link>
-          <Link href="/account" className="utility-label px-2">Account</Link>
+          <span className="nav-divider" aria-hidden="true" />
+          <Link href="/account" className="nav-icon-control" aria-label="Account">
+            <UserIcon />
+          </Link>
+          <Link href="/cart" className="nav-icon-control" aria-label="Cart">
+            <CartIcon />
+          </Link>
           <ThemeToggle />
         </div>
-        <div className="ml-auto flex items-center gap-2 md:hidden">
+        <div className="mobile-nav-actions">
           <GlobalSearch />
           <ThemeToggle />
           <MobileMenu />
         </div>
       </div>
     </header>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 4h2l1.7 10.1a2 2 0 0 0 2 1.7h7.9a2 2 0 0 0 1.9-1.5L20 8H6" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="17" cy="19" r="1" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8" r="3.25" />
+      <path d="M5.5 20c.4-4 2.6-6 6.5-6s6.1 2 6.5 6" />
+    </svg>
   );
 }

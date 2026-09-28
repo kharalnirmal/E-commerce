@@ -7,30 +7,28 @@ import { SignOutButton } from "./sign-out-button";
 export default async function AccountPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
+  const initial = (session.user.name.trim()[0] ?? session.user.email[0]).toUpperCase();
 
   return (
-    <main className="shell py-12 sm:py-20">
-      <section className="border-y border-[var(--line-soft)] py-8 sm:py-12">
-        <h1 className="max-w-4xl text-6xl font-semibold leading-[0.9] tracking-[-0.07em] sm:text-8xl">Account</h1>
-        <p className="mt-6 text-xl font-semibold">{session.user.name}</p>
-        <p className="mt-2 text-[var(--muted)]">{session.user.email}</p>
+    <main className="account-page">
+      <header className="account-header">
+        <h1>Account</h1>
+        <SignOutButton />
+      </header>
 
-        <div className="mt-12 grid border-t border-[var(--line-soft)] sm:grid-cols-3">
-          <Link href="/orders" className="group border-b border-[var(--line-soft)] py-6 text-xl font-semibold sm:border-r sm:px-6">
-            Orders <span aria-hidden="true" className="float-right transition-transform group-hover:translate-x-1">&rarr;</span>
-          </Link>
-          <Link href="/cart" className="group border-b border-[var(--line-soft)] py-6 text-xl font-semibold sm:border-r sm:px-6">
-            Cart <span aria-hidden="true" className="float-right transition-transform group-hover:translate-x-1">&rarr;</span>
-          </Link>
-          <Link href="/products" className="group border-b border-[var(--line-soft)] py-6 text-xl font-semibold sm:px-6">
-            Shop <span aria-hidden="true" className="float-right transition-transform group-hover:translate-x-1">&rarr;</span>
-          </Link>
-        </div>
-
-        <div className="mt-8 flex justify-end">
-          <SignOutButton />
+      <section className="account-profile" aria-label="Profile details">
+        <span className="account-avatar" aria-hidden="true">{initial}</span>
+        <div>
+          <p className="account-name">{session.user.name}</p>
+          <p className="account-email">{session.user.email}</p>
         </div>
       </section>
+
+      <nav className="account-links" aria-label="Account navigation">
+        <Link href="/orders"><span>Orders</span><span aria-hidden="true">&rarr;</span></Link>
+        <Link href="/cart"><span>Cart</span><span aria-hidden="true">&rarr;</span></Link>
+        <Link href="/products"><span>Continue shopping</span><span aria-hidden="true">&rarr;</span></Link>
+      </nav>
     </main>
   );
 }

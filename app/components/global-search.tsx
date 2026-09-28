@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { RemoteImage } from "./remote-image";
 
 type Suggestion = {
   id: string;
@@ -67,13 +68,17 @@ export function GlobalSearch() {
           window.requestAnimationFrame(() => inputRef.current?.focus());
         }}
       >
-        Search
+        <SearchIcon />
+        <span>Search</span>
       </button>
       <dialog
         ref={dialogRef}
         aria-label="Search products"
         className="search-dialog"
         onClose={() => triggerRef.current?.focus()}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) close();
+        }}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.preventDefault();
@@ -83,46 +88,125 @@ export function GlobalSearch() {
       >
         <div className="search-panel">
           <div className="search-panel-head">
-            <strong>Search CHOWK</strong>
-            <button type="button" className="text-action" onClick={close}>Close</button>
+            <span className="utility-label">Search CHOWK</span>
+            <button type="button" className="search-close" aria-label="Close search" onClick={close}>
+              <CloseIcon />
+            </button>
           </div>
-          <label className="sr-only" htmlFor={inputId}>Search products</label>
-          <input
-            ref={inputRef}
-            id={inputId}
-            type="search"
-            value={query}
-            onChange={(event) => {
-              const nextQuery = event.target.value;
-              setQuery(nextQuery);
-              if (nextQuery.trim().length < 2) {
-                setProducts([]);
-                setLoading(false);
-                setFailed(false);
-              }
-            }}
-            placeholder="Product, maker, place..."
-            className="search-input"
-          />
-          <div className="search-results" aria-live="polite">
-            {loading && <p className="search-note">Searching...</p>}
-            {!loading && query.trim().length < 2 && <p className="search-note">Type at least two characters.</p>}
-            {!loading && failed && <p className="search-note" role="alert">Search could not be loaded. Use the full catalog below.</p>}
-            {!loading && !failed && query.trim().length >= 2 && products.length === 0 && <p className="search-note">No matching products.</p>}
-            {products.map((product) => (
+          <form action="/products" method="get" onSubmit={close}>
+            <label className="search-label" htmlFor={inputId}>Search products</label>
+            <div className="search-field">
+              <SearchIcon />
+              <input
+                ref={inputRef}
+                id={inputId}
+                name="q"
+                type="search"
+                value={query}
+                onChange={(event) => {
+                  const nextQuery = event.target.value;
+                  setQuery(nextQuery);
+                  setProducts([]);
+                  setLoading(nextQuery.trim().length >= 2);
+                  setFailed(false);
+                }}
+                placeholder="Lamp, canvas, Kathmandu..."
+                className="search-input"
+                autoComplete="off"
+                enterKeyHint="search"
+              />
+              {query && (
+                <button
+                  type="button"
+                  className="search-clear"
+                  onClick={() => {
+                    setQuery("");
+                    setProducts([]);
+                    setLoading(false);
+                    setFailed(false);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </form>
+          <div className="search-results" aria-live="polite" aria-busy={loading}>
+            {loading && (
+              <div className="search-note search-loading" role="status">
+                <span className="search-spinner" aria-hidden="true" />
+                Searching the market...
+              </div>
+            )}
+            {!loading && query.trim().length < 2 && (
+              <p className="search-note">Search by product, maker, or place.</p>
+            )}
+            {!loading && failed && (
+              <div className="search-empty" role="alert">
+                <strong>Search is unavailable</strong>
+                <p>Try again, or browse the complete collection.</p>
+              </div>
+            )}
+            {!loading && !failed && query.trim().length >= 2 && products.length === 0 && (
+              <div className="search-empty">
+                <strong>No results for &ldquo;{query.trim()}&rdquo;</strong>
+                <p>Check the spelling or try a broader term.</p>
+              </div>
+            )}
+            {!loading && products.length > 0 && (
+              <p className="search-result-count">Top results</p>
+            )}
+            {!loading && products.map((product) => (
               <Link key={product.id} href={`/products/${product.slug}`} className="search-result" onClick={close}>
-                <span><strong>{product.name}</strong><small>{product.maker}</small></span>
-                <span><strong>{product.price}</strong><small>{product.stock > 0 ? "Available" : "Sold out"}</small></span>
+                <span className="search-result-image" aria-hidden="true">
+                  {product.imageUrl ? (
+                    <RemoteImage
+                      src={product.imageUrl}
+                      alt=""
+                      proxyPath={`/api/catalog-image/product/${product.id}`}
+                    />
+                  ) : (
+                    <span className="search-image-placeholder">CH</span>
+                  )}
+                </span>
+                <span className="search-result-copy">
+                  <strong>{product.name}</strong>
+                  <small>{product.maker}</small>
+                </span>
+                <span className="search-result-meta">
+                  <strong>{product.price}</strong>
+                  <small>{product.stock > 0 ? "In stock" : "Sold out"}</small>
+                </span>
+                <span className="search-result-arrow" aria-hidden="true">&rarr;</span>
               </Link>
             ))}
           </div>
-          {query.trim() && (
-            <Link href={`/products?q=${encodeURIComponent(query.trim())}`} className="button-primary w-full" onClick={close}>
-              View all results
+          {query.trim().length >= 2 && (
+            <Link href={`/products?q=${encodeURIComponent(query.trim())}`} className="search-all-results" onClick={close}>
+              <span>View all results</span>
+              <span aria-hidden="true">&rarr;</span>
             </Link>
           )}
         </div>
       </dialog>
     </>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4 4" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m6 6 12 12M18 6 6 18" />
+    </svg>
   );
 }
