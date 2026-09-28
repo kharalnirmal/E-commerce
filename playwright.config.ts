@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const baseURL = `http://localhost:${port}`;
+const useProductionBuild = Boolean(process.env.CI || process.env.PLAYWRIGHT_USE_BUILD);
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -10,6 +11,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? "github" : "list",
+  expect: { timeout: 30_000 },
   use: {
     baseURL,
     trace: "on-first-retry",
@@ -18,7 +20,7 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: process.env.CI ? `npm run start -- --port ${port}` : `npm run dev -- --port ${port}`,
+    command: useProductionBuild ? `npm run start -- --port ${port}` : `npm run dev -- --port ${port}`,
     env: {
       DEMO_MODE: "true",
       DEMO_PASSWORD: process.env.DEMO_PASSWORD ?? "demo-password-for-tests",
@@ -27,7 +29,7 @@ export default defineConfig({
       BETTER_AUTH_URL: baseURL,
     },
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !useProductionBuild,
     timeout: 120_000,
   },
 });

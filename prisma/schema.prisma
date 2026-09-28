@@ -19,6 +19,8 @@ enum OrderStatus {
   DELIVERED
   FAILED
   CANCELLED
+  REFUND_PENDING
+  REFUNDED
 }
 
 enum PaymentStatus {
@@ -26,6 +28,7 @@ enum PaymentStatus {
   SUCCESS
   FAILED
   ABANDONED
+  REFUNDED
 }
 
 model User {
@@ -42,6 +45,7 @@ model User {
   cartItems        CartItem[]
   productViews     ProductView[]
   stockAdjustments StockAdjustment[]
+  confirmedRefunds Payment[]          @relation("ConfirmedRefunds")
 
   role String? @default("USER")
 
@@ -249,12 +253,16 @@ model Payment {
   status                 PaymentStatus         @default(PENDING)
   failureReason          String?
   verifiedAt             DateTime?
+  refundedAt             DateTime?
+  refundedById           String?
+  refundedBy             User?                 @relation("ConfirmedRefunds", fields: [refundedById], references: [id], onDelete: Restrict)
   reservation            InventoryReservation?
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt
 
   @@unique([orderId, attemptNumber])
   @@index([orderId])
+  @@index([refundedById])
   @@map("payment")
 }
 

@@ -15,7 +15,8 @@ export default async function AccountPage() {
         <h1 className="mt-3 text-5xl font-bold tracking-[-0.06em]">Namaste, {session.user.name}.</h1>
         <p className="mt-5 text-[var(--muted)]">Signed in as {session.user.email}</p>
         <div className="mt-9 flex flex-wrap gap-3">
-          <Link href="/products" className="button-primary">Continue shopping</Link>
+          <Link href="/orders" className="button-primary">View orders</Link>
+          <Link href="/products" className="button-secondary">Continue shopping</Link>
           <Link href="/cart" className="button-secondary">View cart</Link>
           <SignOutButton />
         </div>

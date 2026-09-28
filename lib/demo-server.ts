@@ -108,5 +108,5 @@ export async function restoreCanonicalDemo() {
         (slug) => ({ userId: suraj.id, productId: productIds.get(slug)! }),
       ),
     });
-  });
+  }, { timeout: 60_000 });
 }
