@@ -1,16 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/app/components/product-card";
+import { RemoteImage } from "@/app/components/remote-image";
 import { prisma } from "@/lib/prisma";
 
 export default async function Home() {
   const [featured, categories] = await Promise.all([
     prisma.product.findMany({
-      where: { featured: true },
+      where: { featured: true, archivedAt: null, category: { archivedAt: null } },
       take: 6,
       orderBy: { createdAt: "desc" },
       select: {
         name: true,
+        id: true,
         slug: true,
         maker: true,
         origin: true,
@@ -21,8 +23,9 @@ export default async function Home() {
       },
     }),
     prisma.category.findMany({
+      where: { archivedAt: null },
       orderBy: [{ position: "asc" }, { name: "asc" }],
-      select: { name: true, slug: true, description: true, imageUrl: true },
+      select: { id: true, name: true, slug: true, description: true, imageUrl: true },
     }),
   ]);
 
@@ -100,7 +103,7 @@ export default async function Home() {
                 </div>
               </div>
               <div className="image-frame min-h-64">
-                {category.imageUrl && <Image src={category.imageUrl} alt="" fill sizes="(max-width: 768px) 50vw, 25vw" />}
+                {category.imageUrl && <RemoteImage src={category.imageUrl} alt="" proxyPath={`/api/catalog-image/category/${category.id}`} />}
               </div>
             </Link>
           ))}

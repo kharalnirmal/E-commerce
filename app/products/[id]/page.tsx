@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatNpr } from "@/lib/storefront";
 import { prisma } from "@/lib/prisma";
 import AddToCartForm from "./add-to-cart-form";
+import { RemoteImage } from "@/app/components/remote-image";
 
 type ProductPageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params;
-  const product = await prisma.product.findUnique({ where: { slug: id }, select: { name: true, description: true } });
+  const product = await prisma.product.findFirst({ where: { slug: id, archivedAt: null, category: { archivedAt: null } }, select: { name: true, description: true } });
   return product ? { title: product.name, description: product.description } : { title: "Product not found" };
 }
 
 export default async function ProductDetailPage({ params }: ProductPageProps) {
   const { id: slug } = await params;
-  const product = await prisma.product.findUnique({
-    where: { slug },
+  const product = await prisma.product.findFirst({
+    where: { slug, archivedAt: null, category: { archivedAt: null } },
     select: {
       id: true,
       name: true,
@@ -26,6 +26,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
       origin: true,
       description: true,
       imageUrl: true,
+      images: { orderBy: { position: "asc" }, select: { id: true, url: true } },
       stock: true,
       price: true,
       category: { select: { name: true, slug: true } },
@@ -42,12 +43,15 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
         <span className="text-[var(--ink)]">{product.name}</span>
       </nav>
       <div className="grid gap-10 lg:grid-cols-[1.12fr_.88fr] lg:gap-16">
-        <div className="image-frame aspect-[4/5] border-2 border-[var(--line)]">
-          {product.imageUrl ? (
-            <Image src={product.imageUrl} alt={product.name} fill preload sizes="(max-width: 1024px) 100vw, 55vw" />
-          ) : (
-            <div className="flex h-full items-center justify-center">Image coming soon</div>
-          )}
+        <div className="space-y-4">
+          <div className="image-frame aspect-[4/5] border-2 border-[var(--line)]">
+            {(product.images[0]?.url ?? product.imageUrl) ? (
+              <RemoteImage src={product.images[0]?.url ?? product.imageUrl!} alt={product.name} eager proxyPath={product.images[0] ? `/api/catalog-image/image/${product.images[0].id}` : `/api/catalog-image/product/${product.id}`} />
+            ) : (
+              <div className="flex h-full items-center justify-center">Image coming soon</div>
+            )}
+          </div>
+          {product.images.length > 1 && <ul aria-label="Product gallery" className="grid grid-cols-3 gap-3">{product.images.slice(1).map((image, index) => <li key={image.id} className="image-frame relative aspect-square border-2 border-[var(--line)]"><RemoteImage src={image.url} alt={`${product.name}, view ${index + 2}`} proxyPath={`/api/catalog-image/image/${image.id}`} /></li>)}</ul>}
         </div>
         <div className="flex flex-col lg:py-6">
           <p className="utility-label text-[var(--vermilion)]">{product.category.name} / {product.origin}</p>

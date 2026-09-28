@@ -3,14 +3,16 @@ import requireAdmin from "@/lib/require-admin";
 import { ProductForm } from "./product-form";
 import { FeaturedToggle } from "./featured-toggle";
 import { formatNpr } from "@/lib/storefront";
+import Link from "next/link";
 
 export default async function ProductsPage() {
   await requireAdmin();
 
   const [categories, products] = await Promise.all([
     prisma.category.findMany({
+      where: { archivedAt: null },
       select: { id: true, name: true },
-      orderBy: { name: "asc" },
+      orderBy: [{ position: "asc" }, { name: "asc" }],
     }),
     prisma.product.findMany({
       select: {
@@ -19,6 +21,9 @@ export default async function ProductsPage() {
         price: true,
         stock: true,
         featured: true,
+        sku: true,
+        archivedAt: true,
+        lowStockThreshold: true,
         category: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -30,7 +35,7 @@ export default async function ProductsPage() {
       <div>
         <p className="utility-label text-[var(--vermilion)]">Administration</p>
         <h1 className="mt-2 text-6xl font-bold tracking-[-0.07em]">PRODUCTS</h1>
-        <p className="mt-4 text-[var(--muted)]">Curate up to six objects for the weekly edit.</p>
+        <p className="mt-4 text-[var(--muted)]">Edit product stories, lifecycle, galleries, and auditable inventory.</p>
       </div>
 
       {categories.length === 0 && (
@@ -53,9 +58,14 @@ export default async function ProductsPage() {
                   {product.featured && <span className="utility-label rounded-full bg-[var(--acid)] px-3 py-2 text-[#171713]">Featured</span>}
                 </div>
                 <p className="mt-3">Price: {formatNpr(product.price)}</p>
-                <p>Stock: {product.stock}</p>
+                <p className="font-mono text-sm">{product.sku}</p>
+                <p>Stock: {product.stock} · low at {product.lowStockThreshold}</p>
                 <p className="capitalize">Category: {product.category.name}</p>
-                <FeaturedToggle productId={product.id} featured={product.featured} />
+                <p className="utility-label mt-2">{product.archivedAt ? "Archived" : "Active"}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link href={`/admin/products/${product.id}`} className="button-secondary">Edit & inventory</Link>
+                  {!product.archivedAt && <FeaturedToggle productId={product.id} featured={product.featured} />}
+                </div>
               </li>
             ))}
           </ul>

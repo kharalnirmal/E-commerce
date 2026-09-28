@@ -1,10 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { formatNpr } from "@/lib/storefront";
+import { RemoteImage } from "./remote-image";
 
 type ProductCardProps = {
   product: {
     name: string;
+    id: string;
     slug: string;
     maker: string;
     origin: string;
@@ -21,11 +22,10 @@ export function ProductCard({ product }: ProductCardProps) {
       <Link href={`/products/${product.slug}`} className="flex h-full flex-col">
         <div className="image-frame aspect-[4/5]">
           {product.imageUrl ? (
-            <Image
+            <RemoteImage
               src={product.imageUrl}
               alt={product.name}
-              fill
-              sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 24vw"
+              proxyPath={`/api/catalog-image/product/${product.id}`}
             />
           ) : (
             <div className="flex h-full items-center justify-center font-mono text-xs uppercase">Image coming soon</div>

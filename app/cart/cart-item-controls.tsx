@@ -9,10 +9,12 @@ export function CartItemControls({
   itemId,
   quantity,
   maximum,
+  available = true,
 }: {
   itemId: string;
   quantity: number;
   maximum: number;
+  available?: boolean;
 }) {
   const [updateState, updateAction, updatePending] = useActionState(
     updateCartQuantity,
@@ -25,7 +27,7 @@ export function CartItemControls({
 
   return (
     <div className="grid gap-3">
-      <form action={updateAction} className="flex flex-wrap items-end gap-3">
+      {available && <form action={updateAction} className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="itemId" value={itemId} />
         <label className="grid gap-2">
           <span className="utility-label">Quantity</span>
@@ -43,7 +45,7 @@ export function CartItemControls({
         <button type="submit" disabled={updatePending} className="button-secondary">
           {updatePending ? "Updating..." : "Update"}
         </button>
-      </form>
+      </form>}
       <form action={removeAction}>
         <input type="hidden" name="itemId" value={itemId} />
         <button type="submit" disabled={removePending} className="utility-label underline">

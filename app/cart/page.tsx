@@ -17,16 +17,19 @@ export default async function CartPage() {
           name: true,
           price: true,
           stock: true,
+          archivedAt: true,
+          category: { select: { archivedAt: true } },
         },
       },
     },
     orderBy: { createdAt: "asc" },
   });
 
-  const total = items.length
-    ? items.reduce(
+  const availableItems = items.filter((item) => !item.product.archivedAt && !item.product.category.archivedAt);
+  const total = availableItems.length
+    ? availableItems.reduce(
         (sum, item) => sum.plus(item.product.price.mul(item.quantity)),
-        items[0].product.price.mul(0),
+        availableItems[0].product.price.mul(0),
       )
     : 0;
 
@@ -49,11 +52,13 @@ export default async function CartPage() {
                   <h2 className="text-2xl font-bold tracking-[-0.04em]">{item.product.name}</h2>
                   <p className="mt-2 text-[var(--muted)]">{formatNpr(item.product.price)} each · {item.product.stock} available</p>
                   <p className="mt-5 utility-label">Subtotal {formatNpr(item.product.price.mul(item.quantity))}</p>
+                  {(item.product.archivedAt || item.product.category.archivedAt) && <p className="mt-3 font-semibold text-[var(--vermilion)]">No longer available. Remove this item before checkout.</p>}
                 </div>
                 <CartItemControls
                   itemId={item.id}
                   quantity={item.quantity}
                   maximum={Math.min(item.product.stock, 99)}
+                  available={!item.product.archivedAt && !item.product.category.archivedAt}
                 />
               </li>
             ))}

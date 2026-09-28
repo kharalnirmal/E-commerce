@@ -1,15 +1,16 @@
 import requireAdmin from "@/lib/require-admin";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { countLowStockProducts } from "@/lib/catalog-service";
 
 export default async function AdminPage() {
   const user = await requireAdmin();
   const [products, categories, featured, soldOut, lowStock] = await Promise.all([
-    prisma.product.count(),
-    prisma.category.count(),
-    prisma.product.count({ where: { featured: true } }),
-    prisma.product.count({ where: { stock: 0 } }),
-    prisma.product.count({ where: { stock: { gt: 0, lte: 5 } } }),
+    prisma.product.count({ where: { archivedAt: null } }),
+    prisma.category.count({ where: { archivedAt: null } }),
+    prisma.product.count({ where: { featured: true, archivedAt: null } }),
+    prisma.product.count({ where: { stock: 0, archivedAt: null } }),
+    countLowStockProducts(),
   ]);
 
   const summaries = [

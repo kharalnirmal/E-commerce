@@ -29,7 +29,8 @@ export default async function ProductsPage({
   const [products, categories] = await Promise.all([
     prisma.product.findMany({
       where: {
-        ...(category ? { category: { slug: category } } : {}),
+        archivedAt: null,
+        category: { archivedAt: null, ...(category ? { slug: category } : {}) },
         ...(q
           ? {
               OR: [
@@ -45,6 +46,7 @@ export default async function ProductsPage({
       orderBy,
       select: {
         name: true,
+        id: true,
         slug: true,
         maker: true,
         origin: true,
@@ -54,7 +56,7 @@ export default async function ProductsPage({
         category: { select: { name: true } },
       },
     }),
-    prisma.category.findMany({ orderBy: { position: "asc" }, select: { name: true, slug: true } }),
+    prisma.category.findMany({ where: { archivedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }], select: { name: true, slug: true } }),
   ]);
 
   return (

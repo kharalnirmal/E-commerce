@@ -112,3 +112,45 @@ test("cart additions accumulate and stock failures are announced", async ({ page
   await carryAll.getByRole("button", { name: "Update" }).click();
   await expect(carryAll.getByRole("status")).toContainText("not enough stock");
 });
+
+test("administrator manages rich product lifecycle and auditable stock", async ({ page }) => {
+  await page.goto("/");
+  await switchIdentity(page, "Nirmal Kharal");
+  await page.goto("/admin/products");
+
+  const createForm = page.getByRole("button", { name: "Create product" }).locator("..");
+  await createForm.getByLabel("Name").fill("Browser Field Bag");
+  await createForm.getByLabel("Maker").fill("QA Workshop");
+  await createForm.getByLabel("Origin").fill("Patan, Nepal");
+  await createForm.getByLabel("Price").fill("2500");
+  await createForm.getByLabel("Initial stock").fill("2");
+  await createForm.getByLabel("Low-stock threshold").fill("4");
+  await createForm.getByLabel("Category").selectOption({ label: "Style" });
+  await createForm.getByLabel("Description").fill("A browser-tested catalog object.");
+  await createForm.getByLabel("Gallery URLs, one per line").fill("https://images.unsplash.com/photo-1553062407-98eeb64c6a62\nhttps://images.unsplash.com/photo-1521369909029-2afed882baee");
+  await createForm.getByRole("button", { name: "Create product" }).click();
+  await expect(createForm.getByRole("status")).toContainText("Product created with SKU CHK-BROWSERFIELDBAG");
+
+  const product = page.getByRole("listitem").filter({ hasText: "Browser Field Bag" });
+  await product.getByRole("link", { name: "Edit & inventory" }).click();
+  await expect(page.getByText("CHK-BROWSERFIELDBAG", { exact: false })).toBeVisible();
+  await page.getByLabel("Name").fill("Browser Field Bag Revised");
+  await page.getByRole("button", { name: "Save product details" }).click();
+  await expect(page.getByRole("status").first()).toHaveText("Product details saved.");
+
+  await page.getByLabel("Signed amount").fill("3");
+  await page.getByLabel("Reason").fill("Browser test replenishment");
+  await page.getByRole("button", { name: "Adjust stock" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Stock adjusted" })).toHaveText("Stock adjusted to 5.");
+  await expect(page.getByRole("cell", { name: "Browser test replenishment" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Archive product" }).click();
+  await page.goto("/products/browser-field-bag");
+  await expect(page.getByRole("heading", { name: "NOT AT THIS CHAUK." })).toBeVisible();
+
+  await page.getByRole("button", { name: "Open DevUI" }).click();
+  const dialog = page.getByRole("dialog", { name: "Demo identities" });
+  await dialog.getByLabel("Type RESET to restore demo").fill("RESET");
+  await dialog.getByRole("button", { name: "Restore canonical snapshot" }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Canonical demo restored.", { timeout: 20_000 });
+});

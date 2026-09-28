@@ -1,82 +1,88 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
-import requireAdmin from "@/lib/require-admin";
-import { slugify } from "@/lib/storefront";
+import { parseProductForm } from "@/lib/catalog";
+import { adjustProductStock, createCatalogProduct, setProductArchived, updateCatalogProduct } from "@/lib/catalog-service";
 import { toggleFeaturedProduct } from "@/lib/featured-service";
+import requireAdmin from "@/lib/require-admin";
 
 type State = { message: string };
 
-export async function createProduct(
-  _previousState: State,
-  formData: FormData,
-): Promise<State> {
-  await requireAdmin();
-
-  const stringField = (name: string) => {
-    const value = formData.get(name);
-    return typeof value === "string" ? value.trim() : "";
-  };
-  const name = stringField("name");
-  const description = stringField("description");
-  const price = stringField("price");
-  const stockText = stringField("stock");
-  const imageUrl = stringField("imageUrl");
-  const categoryId = stringField("categoryId");
-
-  if (name.length < 2 || name.length > 120) return { message: "Name must be between 2 and 120 characters" };
-  if (description.length > 5000) return { message: "Description is too long" };
-  if (!/^\d{1,10}(\.\d{1,2})?$/.test(price)) {
-    return { message: "Enter a valid non-negative price with up to 2 decimal places." };
-  }
-  if (!/^\d+$/.test(stockText)) return { message: "Stock must be a non-negative whole number." };
-  const stock = Number(stockText);
-  if (!Number.isSafeInteger(stock) || stock > 2_147_483_647) return { message: "Stock is too large." };
-
-  if (imageUrl) {
-    try {
-      const url = new URL(imageUrl);
-      if (url.protocol !== "https:" || url.hostname !== "images.unsplash.com" || imageUrl.length > 2048) {
-        return { message: "Enter a valid images.unsplash.com URL." };
-      }
-    } catch {
-      return { message: "Enter a valid image URL." };
-    }
-  }
-
-  const category = await prisma.category.findUnique({ where: { id: categoryId }, select: { id: true } });
-  if (!category) return { message: "Choose a valid category." };
-  const slug = slugify(name) || "product";
-  if (await prisma.product.findUnique({ where: { slug }, select: { id: true } })) {
-    return { message: "A product with this name already exists." };
-  }
-
-  await prisma.product.create({
-    data: {
-      name,
-      slug,
-      maker: "Independent maker",
-      origin: "Nepal",
-      description: description || null,
-      price,
-      stock,
-      imageUrl: imageUrl || null,
-      category: { connect: { id: category.id } },
-    },
-  });
+function revalidateCatalog(slug?: string) {
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath("/admin");
   revalidatePath("/admin/products");
-  return { message: "Product created." };
+  if (slug) revalidatePath(`/products/${slug}`);
+}
+
+function duplicateMessage(error: unknown) {
+  return error !== null && typeof error === "object" && "code" in error && error.code === "P2002";
+}
+
+export async function createProduct(_previousState: State, formData: FormData): Promise<State> {
+  const administrator = await requireAdmin();
+  const parsed = parseProductForm(formData, true);
+  if (!parsed.data) return { message: parsed.error ?? "Invalid product details." };
+  try {
+    const result = await createCatalogProduct(parsed.data, administrator.id);
+    if ("error" in result && result.error) return { message: result.error };
+    revalidateCatalog(result.product.slug);
+    return { message: `Product created with SKU ${result.product.sku}.` };
+  } catch (error) {
+    if (duplicateMessage(error)) return { message: "That product slug already exists." };
+    throw error;
+  }
+}
+
+export async function updateProduct(productId: string, _previousState: State, formData: FormData): Promise<State> {
+  await requireAdmin();
+  const parsed = parseProductForm(formData);
+  if (!parsed.data) return { message: parsed.error ?? "Invalid product details." };
+  try {
+    const result = await updateCatalogProduct(productId, parsed.data);
+    if ("error" in result && result.error) return { message: result.error };
+    revalidateCatalog(result.product.slug);
+    return { message: "Product details saved." };
+  } catch (error) {
+    if (duplicateMessage(error)) return { message: "That product slug already exists." };
+    throw error;
+  }
+}
+
+export async function adjustStock(productId: string, _previousState: State, formData: FormData): Promise<State> {
+  const administrator = await requireAdmin();
+  const deltaText = formData.get("delta");
+  const reasonValue = formData.get("reason");
+  const reason = typeof reasonValue === "string" ? reasonValue.trim() : "";
+  if (typeof deltaText !== "string" || !/^-?\d+$/.test(deltaText) || deltaText === "0" || deltaText === "-0") {
+    return { message: "Adjustment must be a non-zero signed whole number." };
+  }
+  const delta = Number(deltaText);
+  if (!Number.isSafeInteger(delta) || Math.abs(delta) > 2_147_483_647) return { message: "Adjustment is too large." };
+  if (reason.length < 3 || reason.length > 240) return { message: "Reason must be between 3 and 240 characters." };
+  const result = await adjustProductStock(productId, administrator.id, delta, reason);
+  if ("error" in result && result.error) return { message: result.error };
+  revalidateCatalog();
+  return { message: `Stock adjusted to ${result.adjustment.resultingStock}.` };
+}
+
+export async function toggleProductArchived(productId: string, archived: boolean, _previousState: State): Promise<State> {
+  void _previousState;
+  await requireAdmin();
+  try {
+    await setProductArchived(productId, archived);
+    revalidateCatalog();
+    return { message: archived ? "Product archived." : "Product restored." };
+  } catch {
+    return { message: "Product lifecycle could not be updated." };
+  }
 }
 
 export async function toggleFeatured(productId: string) {
   await requireAdmin();
   if (typeof productId !== "string" || !productId) return "Choose a valid product.";
-
   const result = await toggleFeaturedProduct(productId);
-
-  revalidatePath("/");
-  revalidatePath("/products");
-  revalidatePath("/admin/products");
+  revalidateCatalog();
   return result;
 }

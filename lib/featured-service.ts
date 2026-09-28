@@ -8,12 +8,13 @@ export async function toggleFeaturedProduct(productId: string) {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('chauk-catalog-mutations'))`;
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { featured: true },
+      select: { featured: true, archivedAt: true },
     });
     if (!product) return "Product not found.";
+    if (product.archivedAt) return "Restore the product before featuring it.";
 
     if (!product.featured) {
-      const featuredCount = await tx.product.count({ where: { featured: true } });
+      const featuredCount = await tx.product.count({ where: { featured: true, archivedAt: null } });
       if (!canFeatureProduct(featuredCount, product.featured)) {
         return "The weekly edit already has six products.";
       }

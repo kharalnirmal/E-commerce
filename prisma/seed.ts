@@ -4,6 +4,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import {
   canonicalCategories,
   canonicalProducts,
+  canonicalSku,
   unsplashImage,
 } from "../lib/demo-catalog";
 import { auth } from "../lib/auth";
@@ -20,34 +21,48 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  const categoryIds = new Map<string, string>();
+  const seededProducts = await prisma.$transaction(async (tx) => {
+    const categoryIds = new Map<string, string>();
+    for (const [position, [name, slug, description, image]] of canonicalCategories.entries()) {
+      const category = { name, slug, description, imageUrl: unsplashImage(image), archivedAt: null };
+      const saved = await tx.category.upsert({
+        where: { slug }, create: { ...category, position }, update: { ...category, position }, select: { id: true },
+      });
+      categoryIds.set(name, saved.id);
+    }
 
-  for (const [position, [name, slug, description, image]] of canonicalCategories.entries()) {
-    const category = { name, slug, description, imageUrl: unsplashImage(image) };
-    const saved = await prisma.category.upsert({
-      where: { slug: category.slug },
-      create: { ...category, position },
-      update: { ...category, position },
-      select: { id: true },
-    });
-    categoryIds.set(category.name, saved.id);
-  }
-
-  for (const [name, slug, category, maker, origin, price, stock, featured, description, image] of canonicalProducts) {
-    const data = {
-      name,
-      slug,
-      maker,
-      origin,
-      price,
-      stock,
-      featured,
-      description,
-      imageUrl: unsplashImage(image),
-      categoryId: categoryIds.get(category)!,
-    };
-    await prisma.product.upsert({ where: { slug }, create: data, update: data });
-  }
+    const products: { id: string; slug: string }[] = [];
+    for (const [name, slug, category, maker, origin, price, stock, featured, description, image] of canonicalProducts) {
+      const editorial = {
+        name, slug, sku: canonicalSku(slug), maker, origin, price, featured, description,
+        imageUrl: unsplashImage(image), archivedAt: null, lowStockThreshold: 5, categoryId: categoryIds.get(category)!,
+      };
+      const saved = await tx.product.upsert({
+        where: { slug },
+        create: {
+          ...editorial,
+          stock,
+          ...(stock > 0 ? { stockAdjustments: { create: { actorLabel: "System seed", delta: stock, reason: "Canonical opening stock", resultingStock: stock } } } : {}),
+        },
+        update: editorial,
+        select: { id: true, slug: true, stock: true },
+      });
+      if (saved.stock !== stock) {
+        await tx.product.update({
+          where: { id: saved.id },
+          data: {
+            stock,
+            stockAdjustments: { create: { actorLabel: "System seed", delta: stock - saved.stock, reason: "Canonical seed reconciliation", resultingStock: stock } },
+          },
+        });
+      }
+      await tx.productImage.deleteMany({ where: { productId: saved.id } });
+      await tx.productImage.create({ data: { productId: saved.id, url: unsplashImage(image), position: 0 } });
+      products.push({ id: saved.id, slug: saved.slug });
+    }
+    return products;
+  });
+  const productId = new Map(seededProducts.map((product) => [product.slug, product.id]));
 
   if (isDemoEnabled()) {
     const password = getDemoPassword();
@@ -69,11 +84,6 @@ async function main() {
     const aadarsh = await prisma.user.findUniqueOrThrow({ where: { email: demoIdentities.aadarsh.email } });
     await prisma.cartItem.deleteMany({ where: { userId: { in: [suraj.id, aadarsh.id] } } });
     await prisma.productView.deleteMany({ where: { userId: { in: [suraj.id, aadarsh.id] } } });
-    const seededProducts = await prisma.product.findMany({
-      where: { slug: { in: ["kathmandu-carry-all", "trail-flask", "thimi-clay-lamp", "annapurna-daypack"] } },
-      select: { id: true, slug: true },
-    });
-    const productId = new Map(seededProducts.map((product) => [product.slug, product.id]));
     await prisma.cartItem.createMany({
       data: [
         { userId: suraj.id, productId: productId.get("kathmandu-carry-all")!, quantity: 1 },

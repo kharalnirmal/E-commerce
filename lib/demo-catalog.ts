@@ -1,3 +1,5 @@
+import { createSkuBase } from "@/lib/sku";
+
 export const canonicalCategories = [
   ["Style", "style", "Wearable stories from Kathmandu streets and farther afield.", "photo-1529139574466-a303027c1d8b"],
   ["Home", "home", "Useful objects that make a room feel considered.", "photo-1618221195710-dd6b41faaea6"],
@@ -34,4 +36,8 @@ export const canonicalProducts = [
 
 export function unsplashImage(id: string) {
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`;
+}
+
+export function canonicalSku(slug: string) {
+  return createSkuBase(slug);
 }

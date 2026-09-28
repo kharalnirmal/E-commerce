@@ -3,19 +3,24 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 
 export async function addCartItem(userId: string, productId: string, quantity: number) {
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-    select: { stock: true },
-  });
-  if (!product) return "Product not found.";
-  if (quantity > product.stock) return "Not enough stock available.";
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) return "Choose a quantity from 1 to 99.";
 
   const updated = await prisma.$queryRaw<{ quantity: number }[]>`
     INSERT INTO "cart_item" ("id", "userId", "productId", "quantity", "createdAt", "updatedAt")
-    VALUES (${crypto.randomUUID()}, ${userId}, ${productId}, ${quantity}, NOW(), NOW())
+    SELECT ${crypto.randomUUID()}, ${userId}, product."id", ${quantity}, NOW(), NOW()
+    FROM "product" AS product
+    INNER JOIN "category" AS category ON category."id" = product."categoryId"
+    WHERE product."id" = ${productId}
+      AND product."archivedAt" IS NULL
+      AND category."archivedAt" IS NULL
+      AND ${quantity} <= product."stock"
     ON CONFLICT ("userId", "productId") DO UPDATE
     SET "quantity" = "cart_item"."quantity" + EXCLUDED."quantity", "updatedAt" = NOW()
-    WHERE "cart_item"."quantity" + EXCLUDED."quantity" <= ${product.stock}
+    WHERE "cart_item"."quantity" + EXCLUDED."quantity" <= (
+        SELECT product."stock" FROM "product" AS product
+        INNER JOIN "category" AS category ON category."id" = product."categoryId"
+        WHERE product."id" = EXCLUDED."productId" AND product."archivedAt" IS NULL AND category."archivedAt" IS NULL
+      )
       AND "cart_item"."quantity" + EXCLUDED."quantity" <= 99
     RETURNING "quantity"
   `;
@@ -25,13 +30,17 @@ export async function addCartItem(userId: string, productId: string, quantity: n
 }
 
 export async function updateCartItem(userId: string, itemId: string, quantity: number) {
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) return "Choose a quantity from 1 to 99.";
   const updated = await prisma.$queryRaw<{ id: string }[]>`
     UPDATE "cart_item" AS cart
     SET "quantity" = ${quantity}, "updatedAt" = NOW()
     FROM "product"
+    INNER JOIN "category" ON category."id" = product."categoryId"
     WHERE cart."id" = ${itemId}
       AND cart."userId" = ${userId}
       AND product."id" = cart."productId"
+      AND product."archivedAt" IS NULL
+      AND category."archivedAt" IS NULL
       AND ${quantity} <= product."stock"
     RETURNING cart."id"
   `;

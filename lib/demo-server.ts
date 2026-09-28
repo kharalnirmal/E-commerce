@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import {
   canonicalCategories,
   canonicalProducts,
+  canonicalSku,
   unsplashImage,
 } from "@/lib/demo-catalog";
 import { demoIdentities, getDemoPassword } from "@/lib/demo";
@@ -43,6 +44,7 @@ export async function restoreCanonicalDemo() {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('chauk-catalog-mutations'))`;
     await tx.productView.deleteMany();
     await tx.cartItem.deleteMany();
+    await tx.stockAdjustment.deleteMany();
     await tx.payment.deleteMany();
     await tx.orderItem.deleteMany();
     await tx.order.deleteMany();
@@ -59,11 +61,16 @@ export async function restoreCanonicalDemo() {
     }
 
     const productIds = new Map<string, string>();
+    const administrator = await tx.user.findUniqueOrThrow({
+      where: { email: demoIdentities.nirmal.email },
+      select: { id: true },
+    });
     for (const [name, slug, category, maker, origin, price, stock, featured, description, image] of canonicalProducts) {
       const product = await tx.product.create({
         data: {
           name,
           slug,
+          sku: canonicalSku(slug),
           maker,
           origin,
           price,
@@ -71,7 +78,11 @@ export async function restoreCanonicalDemo() {
           featured,
           description,
           imageUrl: unsplashImage(image),
+          archivedAt: null,
+          lowStockThreshold: 5,
           categoryId: categoryIds.get(category)!,
+          images: { create: { url: unsplashImage(image), position: 0 } },
+          ...(stock > 0 ? { stockAdjustments: { create: { administratorId: administrator.id, actorLabel: demoIdentities.nirmal.name, delta: stock, reason: "Canonical opening stock", resultingStock: stock } } } : {}),
         },
         select: { id: true },
       });
