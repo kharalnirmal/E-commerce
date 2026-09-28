@@ -82,7 +82,7 @@ export default async function Home() {
             alt="A busy market street in Nepal"
             fill
             preload
-            sizes="(max-width: 1024px) 100vw, 44vw"
+            sizes="(max-width: 767px) calc(100vw - 2rem), (max-width: 1024px) 38vw, 30rem"
             className="object-cover"
           />
           <span className="image-caption">Nepal</span>
