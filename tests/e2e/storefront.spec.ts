@@ -135,7 +135,7 @@ test("Quick Add reports authentication, success, and sold-out outcomes", async (
   await page.getByLabel("Name").fill("Quick Add Shopper");
   await page.getByLabel("Email").fill(`quick-add-${Date.now()}@example.test`);
   await page.getByLabel("Password").fill("safe-test-password");
-  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/account$/);
   await page.goto("/products");
   const authenticatedCard = page.locator("article").filter({ hasText: "Kathmandu Carry-All" });

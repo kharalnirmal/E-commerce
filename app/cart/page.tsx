@@ -28,6 +28,17 @@ export default async function CartPage() {
   }), getReservedQuantities()]);
 
   const availableItems = items.filter((item) => !item.product.archivedAt && !item.product.category.archivedAt);
+  const itemAvailability = new Map(
+    items.map((item) => [
+      item.id,
+      Math.max(0, item.product.stock - (reserved.get(item.product.id) ?? 0)),
+    ]),
+  );
+  const checkoutReady = items.length > 0 && items.every((item) => (
+    !item.product.archivedAt
+    && !item.product.category.archivedAt
+    && item.quantity <= (itemAvailability.get(item.id) ?? 0)
+  ));
   const total = availableItems.length
     ? availableItems.reduce(
         (sum, item) => sum.plus(item.product.price.mul(item.quantity)),
@@ -37,42 +48,76 @@ export default async function CartPage() {
 
   return (
     <main className="shell py-12 sm:py-20">
-      <p className="utility-label text-[var(--vermilion)]">Your selection</p>
-      <h1 className="mt-2 text-6xl font-bold tracking-[-0.07em] sm:text-8xl">CART / BAG</h1>
+      <header className="flex flex-col gap-5 border-b border-[var(--line-soft)] pb-8 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-6xl font-bold tracking-[-0.07em] sm:text-8xl">Cart</h1>
+          <p className="mt-4 max-w-xl text-lg text-[var(--muted)]">Adjust quantities here. Stock is reserved only when you continue from checkout.</p>
+        </div>
+        <p className="utility-label">{items.length} {items.length === 1 ? "item" : "items"}</p>
+      </header>
 
       {items.length === 0 ? (
-        <section className="brutal-card mt-10 p-10 text-center">
-          <p className="editorial text-3xl">Your cart is empty.</p>
-          <Link href="/products" className="button-primary mt-6">Explore the market</Link>
+        <section className="empty-state" aria-labelledby="empty-cart-title">
+          <h2 id="empty-cart-title">Your cart is empty.</h2>
+          <p>Browse the shop and add something to start an order.</p>
+          <Link href="/products" className="button-primary">Explore the market</Link>
         </section>
       ) : (
-        <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_22rem]">
-          <ul className="space-y-5">
+        <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-12">
+          <ul className="divide-y divide-[var(--line-soft)] border-y border-[var(--line-soft)]">
             {items.map((item) => {
-              const availableStock = Math.max(0, item.product.stock - (reserved.get(item.product.id) ?? 0));
+              const availableStock = itemAvailability.get(item.id) ?? 0;
+              const active = !item.product.archivedAt && !item.product.category.archivedAt;
+              const hasEnoughStock = active && item.quantity <= availableStock;
               return (
-              <li key={item.id} className="brutal-card grid gap-5 p-5 sm:grid-cols-[1fr_auto]">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-[-0.04em]">{item.product.name}</h2>
-                  <p className="mt-2 text-[var(--muted)]">{formatNpr(item.product.price)} each · {availableStock} available</p>
-                  <p className="mt-5 utility-label">Subtotal {formatNpr(item.product.price.mul(item.quantity))}</p>
-                  {(item.product.archivedAt || item.product.category.archivedAt) && <p className="mt-3 font-semibold text-[var(--vermilion)]">No longer available. Remove this item before checkout.</p>}
-                </div>
-                <CartItemControls
-                  itemId={item.id}
-                  quantity={item.quantity}
-                  maximum={Math.min(availableStock, 99)}
-                  available={!item.product.archivedAt && !item.product.category.archivedAt}
-                />
-              </li>
+                <li key={item.id} className="grid gap-6 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:py-8">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <h2 className="text-2xl font-bold tracking-[-0.04em]">{item.product.name}</h2>
+                      <p className="text-lg font-semibold sm:hidden">{formatNpr(item.product.price.mul(item.quantity))}</p>
+                    </div>
+                    <p className="mt-2 text-sm text-[var(--muted)]">{formatNpr(item.product.price)} each</p>
+                    <div className="mt-5 flex items-start gap-3" role="status">
+                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${hasEnoughStock ? "bg-[var(--ink)]" : "bg-[var(--muted)]"}`} />
+                      <p className="text-sm">
+                        {!active
+                          ? "No longer available. Remove this item before checkout."
+                          : availableStock === 0
+                            ? "Out of stock. Remove this item to continue."
+                            : item.quantity > availableStock
+                              ? `Availability changed. Only ${availableStock} ${availableStock === 1 ? "unit is" : "units are"} available.`
+                              : `${availableStock} available now.`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid gap-5 sm:min-w-52 sm:justify-items-end">
+                    <p className="hidden text-lg font-semibold sm:block">{formatNpr(item.product.price.mul(item.quantity))}</p>
+                    <CartItemControls
+                      itemId={item.id}
+                      quantity={item.quantity}
+                      maximum={Math.min(availableStock, 99)}
+                      available={active && availableStock > 0}
+                    />
+                  </div>
+                </li>
               );
             })}
           </ul>
-          <aside className="brutal-card h-fit p-6 lg:sticky lg:top-28">
-            <p className="utility-label">Current-price total</p>
-            <p className="mt-3 text-4xl font-bold">{formatNpr(total)}</p>
-            <Link href="/checkout" className="button-primary mt-6 w-full">Continue to checkout</Link>
-            <p className="mt-4 text-sm text-[var(--muted)]">Prices, activity, and reservable stock are checked securely before payment.</p>
+          <aside className="h-fit border-y border-[var(--line)] py-6 lg:sticky lg:top-28">
+            <div className="flex items-baseline justify-between gap-4">
+              <h2 className="text-xl font-semibold">Total</h2>
+              <p className="text-3xl font-bold tracking-[-0.04em]">{formatNpr(total)}</p>
+            </div>
+            <p className="mt-2 text-sm text-[var(--muted)]">Delivery is calculated at checkout.</p>
+            {checkoutReady ? (
+              <Link href="/checkout" className="button-primary mt-6 w-full">Continue to checkout</Link>
+            ) : (
+              <div className="mt-6" role="status" aria-live="polite">
+                <button type="button" disabled className="button-primary w-full">Continue to checkout</button>
+                <p className="mt-3 text-sm font-semibold">Update or remove unavailable items to continue.</p>
+              </div>
+            )}
+            <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">Prices and reservable stock are checked again before payment.</p>
           </aside>
         </div>
       )}

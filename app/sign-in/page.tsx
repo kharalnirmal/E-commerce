@@ -38,24 +38,35 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="shell grid min-h-[70vh] place-items-center py-16">
-      <section className="brutal-card w-full max-w-lg p-6 sm:p-10">
-      <p className="utility-label text-[var(--vermilion)]">Welcome back</p>
-      <h1 className="mt-2 text-5xl font-bold tracking-[-0.06em]">Sign in</h1>
+    <main className="shell grid min-h-[72vh] items-center py-12 sm:py-20">
+      <section className="grid border-y border-[var(--line-soft)] lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="flex min-h-56 flex-col justify-between py-8 lg:min-h-[34rem] lg:border-r lg:border-[var(--line-soft)] lg:py-10 lg:pr-12">
+          <h1 className="text-6xl font-semibold leading-[0.88] tracking-[-0.075em] sm:text-8xl">Sign in</h1>
+          <p className="mt-12 max-w-sm text-lg leading-7 text-[var(--muted)]">Pick up your cart, orders, and account.</p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="mt-8 grid gap-3">
-        <label htmlFor="email" className="utility-label">Email</label>
-        <input id="email" name="email" type="email" required className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3" />
+        <div className="py-8 lg:px-12 lg:py-10">
+          <form onSubmit={handleSubmit} aria-busy={pending} className="grid gap-5">
+            <label htmlFor="email" className="grid gap-2">
+              <span className="field-label">Email</span>
+              <input id="email" name="email" type="email" autoComplete="email" required className="field-control w-full" />
+            </label>
 
-        <label htmlFor="password" className="utility-label mt-2">Password</label>
-        <input id="password" name="password" type="password" required className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3" />
+            <label htmlFor="password" className="grid gap-2">
+              <span className="field-label">Password</span>
+              <input id="password" name="password" type="password" autoComplete="current-password" required className="field-control w-full" />
+            </label>
 
-        {error && <p role="alert">{error}</p>}
-        <button disabled={pending} className="button-primary mt-3">
-          {pending ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
-      <p className="mt-6 text-sm">New to CHOWK? <Link href="/sign-up" className="font-bold underline">Create an account</Link>.</p>
+            <div className="min-h-6 text-sm" aria-live="polite" aria-atomic="true">
+              {pending && <p role="status">Signing you in...</p>}
+              {error && <p role="alert">{error}</p>}
+            </div>
+            <button type="submit" disabled={pending} className="button-primary w-full">
+              Sign in
+            </button>
+          </form>
+          <p className="mt-7 border-t border-[var(--line-soft)] pt-6 text-sm">New to CHOWK? <Link href="/sign-up" className="font-bold underline underline-offset-4">Create an account</Link>.</p>
+        </div>
       </section>
     </main>
   );

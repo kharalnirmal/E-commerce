@@ -2,52 +2,62 @@ import { expect, test } from "@playwright/test";
 
 test.describe.configure({ mode: "serial", timeout: 120_000 });
 
-async function switchIdentity(page: import("@playwright/test").Page, name: string) {
-  await page.getByRole("button", { name: "Open DevUI" }).click();
+async function switchIdentity(page: import("@playwright/test").Page, name: "Nirmal" | "Suraj" | "Aadarsh") {
+  await page.getByRole("button", { name: "Demo", exact: true }).click();
   const switched = page.waitForResponse((response) => response.url().includes("/api/demo/session") && response.request().method() === "POST");
-  await page.getByRole("dialog", { name: "Demo identities" }).getByRole("button", { name: new RegExp(name) }).click();
+  await page.getByRole("dialog", { name: "Browse the demo" }).getByRole("button", { name: new RegExp(name) }).click();
   expect((await switched).ok()).toBe(true);
+}
+
+async function restoreCanonicalDemo(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await switchIdentity(page, "Nirmal");
+  const response = await page.request.post("/api/demo/reset", {
+    data: { confirmation: "RESET" },
+  });
+  expect(response.ok()).toBe(true);
 }
 
 test("demo identities are real, distinct sessions", async ({ page }) => {
   await page.goto("/");
-  await switchIdentity(page, "Nirmal Kharal");
+  await expect(page.getByRole("dialog", { name: "Browse the demo" })).toBeHidden();
+  await switchIdentity(page, "Nirmal");
   await page.reload();
-  await page.getByRole("button", { name: "Open DevUI" }).click();
-  const resetDialog = page.getByRole("dialog", { name: "Demo identities" });
-  await resetDialog.getByLabel("Type RESET to restore demo").fill("RESET");
-  await resetDialog.getByRole("button", { name: "Restore canonical snapshot" }).click();
-  await expect(resetDialog.getByRole("status")).toHaveText("Canonical demo restored.", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Demo", exact: true }).click();
+  const demoDialog = page.getByRole("dialog", { name: "Browse the demo" });
+  await expect(demoDialog.getByRole("button", { name: /Nirmal/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(demoDialog.getByRole("status")).toHaveText("Nirmal is active.");
+  await expect(demoDialog.getByRole("button", { name: /reset|restore/i })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await switchIdentity(page, "Suraj Shrestha");
+  await switchIdentity(page, "Suraj");
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/cart");
   await expect(page.getByRole("heading", { name: "Kathmandu Carry-All" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Trail Flask" })).toBeVisible();
-  await page.getByRole("button", { name: "Open DevUI" }).click();
-  await expect(page.getByRole("button", { name: "Close DevUI" })).toBeFocused();
-  await expect(page.getByRole("dialog", { name: "Demo identities" }).getByLabel("Type RESET to restore demo")).toHaveCount(0);
+  await page.getByRole("button", { name: "Demo", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Close demo menu" })).toBeFocused();
+  await expect(page.getByRole("dialog", { name: "Browse the demo" }).getByRole("button", { name: /Suraj/ })).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Open DevUI" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Demo", exact: true })).toBeFocused();
 
-  await switchIdentity(page, "Aadarsh Rai");
+  await switchIdentity(page, "Aadarsh");
   await page.goto("/cart");
   await expect(page.getByText("Your cart is empty.")).toBeVisible();
 
-  await switchIdentity(page, "Nirmal Kharal");
+  await switchIdentity(page, "Nirmal");
   await expect(page).toHaveURL(/\/admin$/);
   await expect(page.getByRole("heading", { name: "MARKET / DESK" })).toBeVisible();
 });
 
-test("weekly edit limit and canonical reset are enforced", async ({ page }) => {
+test("weekly edit limit is enforced and regular auth remains available", async ({ page }) => {
   const visitorEmail = `preserved-${Date.now()}@example.test`;
   await page.goto("/sign-up");
   await page.getByLabel("Name").fill("Preserved Visitor");
   await page.getByLabel("Email").fill(visitorEmail);
   await page.getByLabel("Password").fill("safe-test-password");
-  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/account$/);
-  await switchIdentity(page, "Nirmal Kharal");
+  await switchIdentity(page, "Nirmal");
   await page.goto("/admin/products");
 
   const monsoon = page.getByRole("listitem").filter({ hasText: "Monsoon Overshirt" });
@@ -65,24 +75,14 @@ test("weekly edit limit and canonical reset are enforced", async ({ page }) => {
     monsoon.getByRole("button", { name: "Feature product" }).click(),
     cityLoom.getByRole("button", { name: "Feature product" }).click(),
   ]);
-  const results = await Promise.all([
+  await expect.poll(async () => (await Promise.all([
     monsoon.getByRole("status").textContent(),
     cityLoom.getByRole("status").textContent(),
-  ]);
-  expect(results.sort()).toEqual([
+  ])).sort()).toEqual([
     "The weekly edit already has six products.",
     "Weekly edit updated.",
   ]);
   await competingPage.close();
-
-  await page.getByRole("button", { name: "Open DevUI" }).click();
-  const dialog = page.getByRole("dialog", { name: "Demo identities" });
-  await dialog.getByLabel("Type RESET to restore demo").fill("reset");
-  await dialog.getByRole("button", { name: "Restore canonical snapshot" }).click();
-  await expect(dialog.getByRole("status")).toHaveText("Type RESET exactly to continue.");
-  await dialog.getByLabel("Type RESET to restore demo").fill("RESET");
-  await dialog.getByRole("button", { name: "Restore canonical snapshot" }).click();
-  await expect(dialog.getByRole("status")).toHaveText("Canonical demo restored.", { timeout: 20_000 });
 
   await page.goto("/account");
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -95,7 +95,7 @@ test("weekly edit limit and canonical reset are enforced", async ({ page }) => {
 
 test("cart additions accumulate and stock failures are announced", async ({ page }) => {
   await page.goto("/");
-  await switchIdentity(page, "Suraj Shrestha");
+  await switchIdentity(page, "Suraj");
   const competingPage = await page.context().newPage();
   await Promise.all([
     page.goto("/products/kathmandu-carry-all"),
@@ -125,7 +125,7 @@ test("cart additions accumulate and stock failures are announced", async ({ page
 
 test("administrator manages rich product lifecycle and auditable stock", async ({ page }) => {
   await page.goto("/");
-  await switchIdentity(page, "Nirmal Kharal");
+  await switchIdentity(page, "Nirmal");
   await page.goto("/admin/products");
 
   const createForm = page.getByRole("button", { name: "Create product" }).locator("..");
@@ -157,10 +157,5 @@ test("administrator manages rich product lifecycle and auditable stock", async (
   await page.getByRole("button", { name: "Archive product" }).click();
   await page.goto("/products/browser-field-bag");
   await expect(page.getByRole("heading", { name: "NOT AT THIS CHOWK." })).toBeVisible();
-
-  await page.getByRole("button", { name: "Open DevUI" }).click();
-  const dialog = page.getByRole("dialog", { name: "Demo identities" });
-  await dialog.getByLabel("Type RESET to restore demo").fill("RESET");
-  await dialog.getByRole("button", { name: "Restore canonical snapshot" }).click();
-  await expect(dialog.getByRole("status")).toHaveText("Canonical demo restored.", { timeout: 20_000 });
+  await restoreCanonicalDemo(page);
 });

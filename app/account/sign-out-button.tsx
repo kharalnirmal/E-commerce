@@ -31,11 +31,14 @@ export function SignOutButton() {
   }
 
   return (
-    <>
-      <button type="button" onClick={handleSignOut} disabled={pending} className="button-secondary">
-        {pending ? "Signing out..." : "Sign out"}
+    <div className="grid justify-items-end gap-2">
+      <button type="button" onClick={handleSignOut} disabled={pending} aria-describedby="sign-out-status" className="button-secondary">
+        Sign out
       </button>
-      {error && <p role="alert">{error}</p>}
-    </>
+      <div id="sign-out-status" className="min-h-5 text-sm" aria-live="polite" aria-atomic="true">
+        {pending && <p role="status">Signing you out...</p>}
+        {error && <p role="alert">{error}</p>}
+      </div>
+    </div>
   );
 }

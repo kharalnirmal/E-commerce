@@ -9,15 +9,24 @@ export default async function AccountPage() {
   if (!session) redirect("/sign-in");
 
   return (
-    <main className="shell py-16">
-      <section className="brutal-card mx-auto max-w-2xl p-8 sm:p-12">
-        <p className="utility-label text-[var(--vermilion)]">Your account</p>
-        <h1 className="mt-3 text-5xl font-bold tracking-[-0.06em]">Namaste, {session.user.name}.</h1>
-        <p className="mt-5 text-[var(--muted)]">Signed in as {session.user.email}</p>
-        <div className="mt-9 flex flex-wrap gap-3">
-          <Link href="/orders" className="button-primary">View orders</Link>
-          <Link href="/products" className="button-secondary">Continue shopping</Link>
-          <Link href="/cart" className="button-secondary">View cart</Link>
+    <main className="shell py-12 sm:py-20">
+      <section className="border-y border-[var(--line-soft)] py-8 sm:py-12">
+        <h1 className="max-w-4xl text-6xl font-semibold leading-[0.9] tracking-[-0.07em] sm:text-8xl">Namaste, {session.user.name}.</h1>
+        <p className="mt-6 text-[var(--muted)]">{session.user.email}</p>
+
+        <div className="mt-12 grid border-t border-[var(--line-soft)] sm:grid-cols-3">
+          <Link href="/orders" className="group border-b border-[var(--line-soft)] py-6 text-xl font-semibold sm:border-r sm:px-6">
+            Orders <span aria-hidden="true" className="float-right transition-transform group-hover:translate-x-1">&rarr;</span>
+          </Link>
+          <Link href="/cart" className="group border-b border-[var(--line-soft)] py-6 text-xl font-semibold sm:border-r sm:px-6">
+            Cart <span aria-hidden="true" className="float-right transition-transform group-hover:translate-x-1">&rarr;</span>
+          </Link>
+          <Link href="/products" className="group border-b border-[var(--line-soft)] py-6 text-xl font-semibold sm:px-6">
+            Shop <span aria-hidden="true" className="float-right transition-transform group-hover:translate-x-1">&rarr;</span>
+          </Link>
+        </div>
+
+        <div className="mt-8 flex justify-end">
           <SignOutButton />
         </div>
       </section>

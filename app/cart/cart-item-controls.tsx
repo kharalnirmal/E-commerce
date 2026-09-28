@@ -24,10 +24,11 @@ export function CartItemControls({
     removeCartItem,
     initialState,
   );
+  const pending = updatePending || removePending;
 
   return (
-    <div className="grid gap-3">
-      {available && <form action={updateAction} className="flex flex-wrap items-end gap-3">
+    <div className="grid gap-3 sm:justify-items-end">
+      {available && <form action={updateAction} className="flex flex-wrap items-end gap-3" aria-busy={updatePending}>
         <input type="hidden" name="itemId" value={itemId} />
         <label className="grid gap-2">
           <span className="utility-label">Quantity</span>
@@ -39,21 +40,22 @@ export function CartItemControls({
             max={maximum}
             defaultValue={quantity}
             required
-            className="min-h-11 w-24 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3"
+            disabled={pending}
+            className="field-control w-24"
           />
         </label>
-        <button type="submit" disabled={updatePending} className="button-secondary">
+        <button type="submit" disabled={pending} className="button-secondary">
           {updatePending ? "Updating..." : "Update"}
         </button>
       </form>}
-      <form action={removeAction}>
+      <form action={removeAction} aria-busy={removePending}>
         <input type="hidden" name="itemId" value={itemId} />
-        <button type="submit" disabled={removePending} className="utility-label underline">
+        <button type="submit" disabled={pending} className="text-action">
           {removePending ? "Removing..." : "Remove"}
         </button>
       </form>
-      <p role="status" aria-live="polite" className="min-h-5 text-sm">
-        {updateState.message || removeState.message}
+      <p role="status" aria-live="polite" aria-atomic="true" className="min-h-5 text-sm text-[var(--muted)]">
+        {updatePending ? "Updating quantity..." : removePending ? "Removing item..." : updateState.message || removeState.message}
       </p>
     </div>
   );

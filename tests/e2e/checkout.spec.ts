@@ -31,8 +31,8 @@ async function signIn(page: Page, email: string) {
 }
 
 async function switchIdentity(page: Page, name: string) {
-  const dialog = page.getByRole("dialog", { name: "Demo identities" });
-  if (!(await dialog.isVisible())) await page.getByRole("button", { name: "Open DevUI" }).click();
+  const dialog = page.getByRole("dialog", { name: "Browse the demo" });
+  if (!(await dialog.isVisible())) await page.getByRole("button", { name: "Demo", exact: true }).click();
   const switched = page.waitForResponse((response) => response.url().includes("/api/demo/session") && response.request().method() === "POST");
   await dialog.getByRole("button", { name: new RegExp(name) }).click();
   expect((await switched).ok()).toBe(true);
@@ -40,12 +40,11 @@ async function switchIdentity(page: Page, name: string) {
 
 async function restoreCanonicalDemo(page: Page) {
   await page.goto("/");
-  await switchIdentity(page, "Nirmal Kharal");
-  await page.getByRole("button", { name: "Open DevUI" }).click();
-  const dialog = page.getByRole("dialog", { name: "Demo identities" });
-  await dialog.getByLabel("Type RESET to restore demo").fill("RESET");
-  await dialog.getByRole("button", { name: "Restore canonical snapshot" }).click();
-  await expect(dialog.getByRole("status")).toHaveText("Canonical demo restored.", { timeout: 60_000 });
+  await switchIdentity(page, "Nirmal");
+  const response = await page.request.post("/api/demo/reset", {
+    data: { confirmation: "RESET" },
+  });
+  expect(response.ok()).toBe(true);
 }
 
 async function failCurrentPayment(page: Page) {
@@ -67,35 +66,35 @@ async function failCurrentPayment(page: Page) {
 
 test("customer cancellation and administrator refund workflows remain auditable", async ({ page }) => {
   await restoreCanonicalDemo(page);
-  await switchIdentity(page, "Suraj Shrestha");
+  await switchIdentity(page, "Suraj");
 
   await page.goto("/cart");
   const unpaidNumber = await fillCheckout(page);
   await failCurrentPayment(page);
   await page.goto(`/orders/${unpaidNumber}`);
-  await expect(page.getByRole("heading", { name: "Failed" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Failed", exact: true })).toBeVisible();
   await expect(page.getByRole("paragraph").filter({ hasText: /^Failed$/ })).toBeVisible();
   await page.getByRole("button", { name: "Retry payment" }).click();
   const failureUrl = await page.locator('input[name="failure_url"]').inputValue();
   await page.goto(failureUrl);
-  await expect(page.getByRole("heading", { name: "Failed" })).toBeVisible();
-  await expect(page.getByText("Abandoned", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Failed", exact: true })).toBeVisible();
+  await expect(page.getByRole("paragraph").filter({ hasText: /^Abandoned$/ })).toBeVisible();
   await page.getByRole("button", { name: "Retry payment" }).click();
   await page.goto(`/orders/${unpaidNumber}`);
   await page.getByRole("button", { name: "Cancel order" }).click();
-  await expect(page.getByRole("heading", { name: "Cancelled" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cancelled", exact: true })).toBeVisible();
   await expect(page.getByText("Customer cancelled the unpaid order.")).toBeVisible();
 
   await page.goto("/cart");
   const paidNumber = await fillCheckout(page);
   await page.getByRole("button", { name: "Continue to eSewa" }).click();
   await expect(page).toHaveURL(/\/orders\/.+payment=success/);
-  await expect(page.getByRole("heading", { name: "Paid" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Paid", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Request cancellation" }).click();
   await expect(page.getByRole("status").filter({ hasText: "manual refund is pending" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Refund pending" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Refund pending", exact: true })).toBeVisible();
 
-  await switchIdentity(page, "Nirmal Kharal");
+  await switchIdentity(page, "Nirmal");
   await page.goto("/admin/orders");
   await page.getByLabel("Order or customer").fill(paidNumber);
   await page.getByLabel("Fulfillment status").selectOption("REFUND_PENDING");
@@ -103,10 +102,10 @@ test("customer cancellation and administrator refund workflows remain auditable"
   await expect(page.getByRole("cell", { name: paidNumber })).toBeVisible();
   await page.getByRole("link", { name: "Open" }).click();
   await page.getByRole("button", { name: "Confirm manual refund" }).click();
-  await expect(page.getByRole("heading", { name: "Refunded" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Refunded", exact: true })).toBeVisible();
   await expect(page.getByText("Administrator confirmed the manual refund and restored inventory.")).toBeVisible();
 
-  await switchIdentity(page, "Suraj Shrestha");
+  await switchIdentity(page, "Suraj");
   await page.goto("/orders");
   const refundedOrder = page.getByRole("listitem").filter({ hasText: paidNumber });
   await expect(refundedOrder).toContainText("Refunded");
@@ -147,14 +146,14 @@ test("competing shoppers cannot reserve the final unit and the winner can be ful
   await expect(loser.getByRole("status")).toContainText("not enough available stock");
   const orderNumber = (await winner.getByText(/^CHK-\d{4}-\d+$/).textContent())!;
   await winner.getByRole("button", { name: "Continue to eSewa" }).click();
-  await expect(winner.getByRole("heading", { name: "Paid" })).toBeVisible();
+  await expect(winner.getByRole("heading", { name: "Paid", exact: true })).toBeVisible();
 
   await page.goto(`/admin/orders?q=${encodeURIComponent(orderNumber)}`);
   await page.getByRole("link", { name: "Open" }).click();
   await page.getByRole("button", { name: "Mark shipped" }).click();
-  await expect(page.getByRole("heading", { name: "Shipped" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Shipped", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Mark delivered" }).click();
-  await expect(page.getByRole("heading", { name: "Delivered" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Delivered", exact: true })).toBeVisible();
   await expect(page.getByText("No administrative transition is available.")).toBeVisible();
   await surajContext.close();
   await aadarshContext.close();
