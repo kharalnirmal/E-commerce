@@ -4,6 +4,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import {
   canonicalCategories,
   canonicalProducts,
+  canonicalGallery,
   canonicalSku,
   unsplashImage,
 } from "../lib/demo-catalog";
@@ -18,6 +19,7 @@ if (!connectionString) throw new Error("DATABASE_URL is not configured.");
 const schema = new URL(connectionString).searchParams.get("schema") ?? undefined;
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }, { schema }),
+  transactionOptions: { maxWait: 10_000, timeout: 120_000 },
 });
 
 async function main() {
@@ -57,7 +59,13 @@ async function main() {
         });
       }
       await tx.productImage.deleteMany({ where: { productId: saved.id } });
-      await tx.productImage.create({ data: { productId: saved.id, url: unsplashImage(image), position: 0 } });
+      await tx.productImage.createMany({
+        data: canonicalGallery(slug, image).map((galleryImage, position) => ({
+          productId: saved.id,
+          url: unsplashImage(galleryImage),
+          position,
+        })),
+      });
       products.push({ id: saved.id, slug: saved.slug });
     }
     return products;

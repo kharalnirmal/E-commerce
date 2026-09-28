@@ -5,6 +5,8 @@ export const canonicalCategories = [
   ["Home", "home", "Useful objects that make a room feel considered.", "photo-1618221195710-dd6b41faaea6"],
   ["Tech", "tech", "Quiet technology for work, sound, and everyday movement.", "photo-1498049794561-7780e7231661"],
   ["Outdoors", "outdoors", "Field-tested essentials for hills, trails, and open air.", "photo-1464822759023-fed622ff2c3b"],
+  ["Wellbeing", "wellbeing", "Simple tools for rest, movement, and daily care.", "photo-1544367567-0f2fcb009e0b"],
+  ["Travel", "travel", "Compact companions for journeys near and far.", "photo-1488646953014-85cb44e25828"],
 ] as const;
 
 export const canonicalProducts = [
@@ -32,7 +34,25 @@ export const canonicalProducts = [
   ["Camp Stool No. 2", "camp-stool-no-2", "Outdoors", "Karnali Canvas", "Nepalgunj, Nepal", 4400, 8, false, "A folding hardwood and canvas perch for camp, balcony, or workshop.", "photo-1475483768296-6163e08872a1"],
   ["Solar Camp Light", "solar-camp-light", "Outdoors", "BioLite", "United States", 7600, 13, false, "A rechargeable solar lantern with a calm, adjustable warm light.", "photo-1504851149312-7a075b496cc7"],
   ["Tamang Trek Blanket", "tamang-trek-blanket", "Outdoors", "Himalayan Weavers", "Rasuwa, Nepal", 6100, 6, false, "A dense wool blanket inspired by highland weaving traditions.", "photo-1528459801416-a9e53bbf4e17"],
+  ["Copper Water Carafe", "copper-water-carafe", "Wellbeing", "Patan Metalworks", "Lalitpur, Nepal", 3900, 15, false, "A clean-lined hammered copper carafe for the bedside or shared table.", "photo-1602143407151-7111542de6e8"],
+  ["Meditation Floor Cushion", "meditation-floor-cushion", "Wellbeing", "Sana Hastakala", "Kathmandu, Nepal", 3400, 12, false, "A firm cotton cushion filled for steady, comfortable daily practice.", "photo-1544367567-0f2fcb009e0b"],
+  ["Juniper Bath Soak", "juniper-bath-soak", "Wellbeing", "Wild Earth", "Dolakha, Nepal", 1450, 28, false, "Mineral salts and mountain juniper blended for a quiet end to the day.", "photo-1603006905003-be475563bc59"],
+  ["Daily Movement Mat", "daily-movement-mat", "Wellbeing", "Manduka", "Germany", 7900, 9, false, "A dense, grippy mat for stretching, strength, and unhurried movement.", "photo-1544367567-0f2fcb009e0b"],
+  ["Transit Weekender", "transit-weekender", "Travel", "Himali Studio", "Lalitpur, Nepal", 7600, 11, false, "A structured canvas holdall sized for short journeys and overhead bins.", "photo-1553062407-98eeb64c6a62"],
+  ["Lokta Travel Journal", "lokta-travel-journal", "Travel", "Paper Nepal", "Bhaktapur, Nepal", 1250, 25, false, "A compact handmade journal with durable paper for notes on the move.", "photo-1455390582262-044cdead277a"],
+  ["Packable Rain Cover", "packable-rain-cover", "Travel", "Sherpa Adventure Gear", "Kathmandu, Nepal", 2600, 18, false, "A light waterproof pack cover that folds into its own pocket.", "photo-1551632811-561732d1e306"],
+  ["Universal Field Adapter", "universal-field-adapter", "Travel", "Native Union", "France", 5200, 16, false, "A compact multi-region adapter with two USB-C ports for lighter packing.", "photo-1555617981-dac3880eac6e"],
 ] as const;
+
+export const canonicalGalleryImages: Record<string, readonly string[]> = {
+  "kathmandu-carry-all": ["photo-1553062407-98eeb64c6a62", "photo-1551632811-561732d1e306"],
+  "thimi-clay-lamp": ["photo-1507473885765-e6ed057f782c", "photo-1513506003901-1e6a229e2d15"],
+  "transit-weekender": ["photo-1553062407-98eeb64c6a62", "photo-1488646953014-85cb44e25828"],
+};
+
+export function canonicalGallery(slug: string, primaryImage: string) {
+  return canonicalGalleryImages[slug] ?? [primaryImage];
+}
 
 export function unsplashImage(id: string) {
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`;

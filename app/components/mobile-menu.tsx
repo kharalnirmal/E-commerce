@@ -5,8 +5,8 @@ import { useRef } from "react";
 
 const links = [
   ["Shop", "/products"],
-  ["Edit", "/#weekly-edit"],
-  ["Categories", "/#categories"],
+  ["Featured", "/#featured"],
+  ["Collections", "/#collections"],
   ["Search", "/products#catalog-search"],
   ["Cart", "/cart"],
   ["Account", "/sign-in"],
@@ -19,7 +19,7 @@ export function MobileMenu() {
     <>
       <button
         type="button"
-        className="button-secondary md:hidden"
+        className="nav-action md:hidden"
         onClick={() => dialogRef.current?.showModal()}
         aria-haspopup="dialog"
       >
@@ -28,14 +28,14 @@ export function MobileMenu() {
       <dialog
         ref={dialogRef}
         aria-label="Main menu"
-        className="m-0 h-dvh max-h-none w-full max-w-none bg-[var(--vermilion)] p-0 text-[#fff9ed] backdrop:bg-black/50"
+        className="m-0 h-dvh max-h-none w-full max-w-none bg-[var(--paper)] p-0 text-[var(--ink)] backdrop:bg-black/60"
       >
         <div className="shell flex h-full flex-col py-5">
-          <div className="flex items-center justify-between border-b-2 border-current pb-4">
-            <span className="text-2xl font-black tracking-[-0.08em]">CHAUK</span>
+          <div className="flex items-center justify-between border-b border-[var(--line-soft)] pb-4">
+            <span className="wordmark">CHOWK</span>
             <button
               type="button"
-              className="rounded-full border-2 px-4 py-2 font-mono text-xs uppercase"
+              className="text-action"
               onClick={() => dialogRef.current?.close()}
             >
               Close
@@ -47,10 +47,10 @@ export function MobileMenu() {
                 key={label}
                 href={href}
                 onClick={() => dialogRef.current?.close()}
-                className="flex items-baseline justify-between border-b-2 border-current py-3 text-[clamp(2.6rem,12vw,5.5rem)] font-bold leading-none tracking-[-0.06em]"
+                 className="flex items-baseline justify-between border-b border-[var(--line-soft)] py-4 text-[clamp(2.2rem,11vw,4.5rem)] font-semibold leading-none tracking-[-0.055em]"
               >
                 {label}
-                <span className="font-mono text-xs">0{index + 1}</span>
+                 <span className="text-xs tracking-widest">0{index + 1}</span>
               </Link>
             ))}
           </nav>

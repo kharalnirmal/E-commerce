@@ -17,7 +17,7 @@ export default async function PaymentHandoffPage({ params }: { params: Promise<{
       <p className="utility-label text-[var(--vermilion)]">{payment.order.displayNumber}</p><h1 className="mt-3 text-5xl font-bold tracking-[-0.06em]">Inventory reserved.</h1>
       <p className="editorial mt-5 text-2xl">Pay {formatNpr(payment.amount)} through eSewa before {payment.reservation?.expiresAt.toLocaleTimeString()}.</p>
       <form action={request.url} method="post" className="mt-8">{Object.entries(request.fields).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}<button type="submit" className="button-primary w-full">Continue to eSewa</button></form>
-      <p className="mt-4 text-sm text-[var(--muted)]">Your order is confirmed only after CHAUK verifies the transaction directly with eSewa.</p>
+      <p className="mt-4 text-sm text-[var(--muted)]">Your order is confirmed only after CHOWK verifies the transaction directly with eSewa.</p>
     </section></main>
   );
 }

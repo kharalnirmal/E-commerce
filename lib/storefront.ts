@@ -2,6 +2,8 @@ export const catalogSorts = ["featured", "newest", "price-asc", "price-desc"] as
 
 export type CatalogSort = (typeof catalogSorts)[number];
 
+export type OpeningEntry = "home" | "seen" | "other";
+
 export function formatNpr(value: { toString(): string } | number | string) {
   return new Intl.NumberFormat("en-NP", {
     style: "currency",
@@ -34,4 +36,20 @@ export function readCatalogParams(params: {
     : "featured";
 
   return { q, category, sort };
+}
+
+export function readSearchQuery(value: string | string[] | null | undefined) {
+  return typeof value === "string" ? value.trim().slice(0, 100) : "";
+}
+
+export function getOpeningState(stored: string | null, initialPath: string) {
+  if (stored === "seen" || stored === "other") {
+    return { show: false, stored } as const;
+  }
+
+  if (stored === "home") return { show: true, stored: "seen" } as const;
+
+  return initialPath === "/"
+    ? ({ show: true, stored: "seen" } as const)
+    : ({ show: false, stored: "other" } as const);
 }

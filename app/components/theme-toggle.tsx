@@ -46,7 +46,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="utility-label rounded-full border-2 px-3 py-2"
+      className="nav-action"
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
     >
       {theme === "dark" ? "Light" : "Dark"}

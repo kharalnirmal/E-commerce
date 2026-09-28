@@ -6,10 +6,11 @@ const useProductionBuild = Boolean(process.env.CI || process.env.PLAYWRIGHT_USE_
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  // The browser suite intentionally mutates one canonical commerce database.
+  fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: process.env.CI ? "github" : "list",
   expect: { timeout: 30_000 },
   use: {

@@ -22,10 +22,13 @@ export async function getReservedQuantities(database: Database = prisma, now = n
   return new Map(rows.map((row) => [row.productId, Number(row.quantity)]));
 }
 
-export async function withAvailableStock<T extends { id: string; stock: number }>(products: T[]) {
-  const reserved = await getReservedQuantities();
+export async function withAvailableStock<T extends { id: string; stock: number }>(
+  products: T[],
+  reserved?: Map<string, number>,
+) {
+  const reservedQuantities = reserved ?? await getReservedQuantities();
   return products.map((product) => ({
     ...product,
-    stock: Math.max(0, product.stock - (reserved.get(product.id) ?? 0)),
+    stock: Math.max(0, product.stock - (reservedQuantities.get(product.id) ?? 0)),
   }));
 }

@@ -21,7 +21,7 @@ export default function AddToCartForm({
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="productId" value={productId} />
 
-      <label className="utility-label flex items-center justify-between gap-4">
+      <label className="field-label flex items-center justify-between gap-4">
         Quantity
         <input
           type="number"
@@ -30,7 +30,7 @@ export default function AddToCartForm({
           max={Math.min(stock, 99)}
           defaultValue="1"
           required
-          className="min-h-11 w-20 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-2 text-base"
+          className="field-control w-20 text-base"
         />
       </label>
 

@@ -27,6 +27,7 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(process.env.DEMO_PASSWORD ?? "demo-password-for-tests");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/account$/);
 }
 
 async function switchIdentity(page: Page, name: string) {
@@ -139,6 +140,7 @@ test("competing shoppers cannot reserve the final unit and the winner can be ful
     suraj.getByRole("button", { name: "Reserve and continue to eSewa" }).click(),
     aadarsh.getByRole("button", { name: "Reserve and continue to eSewa" }).click(),
   ]);
+  await expect.poll(() => [suraj.url(), aadarsh.url()].filter((url) => url.includes("/checkout/pay/")).length).toBe(1);
   const winner = suraj.url().includes("/checkout/pay/") ? suraj : aadarsh;
   const loser = winner === suraj ? aadarsh : suraj;
   await expect(winner.getByRole("heading", { name: "Inventory reserved." })).toBeVisible();

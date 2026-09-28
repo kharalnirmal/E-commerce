@@ -55,7 +55,7 @@ export default function SignInPage() {
           {pending ? "Signing in..." : "Sign in"}
         </button>
       </form>
-      <p className="mt-6 text-sm">New to CHAUK? <Link href="/sign-up" className="font-bold underline">Create an account</Link>.</p>
+      <p className="mt-6 text-sm">New to CHOWK? <Link href="/sign-up" className="font-bold underline">Create an account</Link>.</p>
       </section>
     </main>
   );

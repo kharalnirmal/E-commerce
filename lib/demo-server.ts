@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import {
   canonicalCategories,
   canonicalProducts,
+  canonicalGallery,
   canonicalSku,
   unsplashImage,
 } from "@/lib/demo-catalog";
@@ -85,7 +86,12 @@ export async function restoreCanonicalDemo() {
           archivedAt: null,
           lowStockThreshold: 5,
           categoryId: categoryIds.get(category)!,
-          images: { create: { url: unsplashImage(image), position: 0 } },
+          images: {
+            create: canonicalGallery(slug, image).map((galleryImage, position) => ({
+              url: unsplashImage(galleryImage),
+              position,
+            })),
+          },
           ...(stock > 0 ? { stockAdjustments: { create: { administratorId: administrator.id, actorLabel: demoIdentities.nirmal.name, delta: stock, reason: "Canonical opening stock", resultingStock: stock } } } : {}),
         },
         select: { id: true },
@@ -108,5 +114,5 @@ export async function restoreCanonicalDemo() {
         (slug) => ({ userId: suraj.id, productId: productIds.get(slug)! }),
       ),
     });
-  }, { timeout: 60_000 });
+  }, { maxWait: 10_000, timeout: 120_000 });
 }

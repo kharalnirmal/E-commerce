@@ -20,12 +20,12 @@ export default async function ProductsPage({
   const { q, category, sort } = readCatalogParams(await searchParams);
   const orderBy: Prisma.ProductOrderByWithRelationInput[] =
     sort === "price-asc"
-      ? [{ price: "asc" }]
+      ? [{ price: "asc" }, { name: "asc" }]
       : sort === "price-desc"
-        ? [{ price: "desc" }]
+        ? [{ price: "desc" }, { name: "asc" }]
         : sort === "newest"
-          ? [{ createdAt: "desc" }]
-          : [{ featured: "desc" }, { createdAt: "desc" }];
+          ? [{ createdAt: "desc" }, { name: "asc" }]
+          : [{ featured: "desc" }, { createdAt: "desc" }, { name: "asc" }];
 
   const [storedProducts, categories] = await Promise.all([
     prisma.product.findMany({
@@ -63,29 +63,28 @@ export default async function ProductsPage({
 
   return (
     <main className="shell py-12 sm:py-20">
-      <div className="grid gap-6 border-b-2 border-[var(--line)] pb-10 md:grid-cols-[1fr_auto] md:items-end">
+      <div className="catalog-heading">
         <div>
-          <p className="utility-label text-[var(--vermilion)]">The full market</p>
-          <h1 className="mt-2 text-6xl font-bold tracking-[-0.07em] sm:text-8xl">SHOP / ALL</h1>
+          <h1>Shop all</h1>
+          <p>Objects for getting dressed, settling in, tuning out, and heading uphill.</p>
         </div>
-        <p className="editorial max-w-md text-xl">Objects for getting dressed, settling in, tuning out, and heading uphill.</p>
       </div>
 
-      <form id="catalog-search" className="my-8 grid gap-3 rounded-2xl border-2 border-[var(--line)] bg-[var(--surface)] p-4 lg:grid-cols-[1fr_14rem_14rem_auto]" method="get">
+      <form id="catalog-search" className="catalog-controls" method="get">
         <label className="grid gap-2">
-          <span className="utility-label">Search the market</span>
-          <input name="q" type="search" defaultValue={q} placeholder="Try lamp, Nepal, canvas..." className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3" />
+          <span className="field-label">Search the market</span>
+          <input name="q" type="search" defaultValue={q} placeholder="Try lamp, Nepal, canvas..." className="field-control" />
         </label>
         <label className="grid gap-2">
-          <span className="utility-label">Category</span>
-          <select name="category" defaultValue={category} className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3">
+          <span className="field-label">Category</span>
+          <select name="category" defaultValue={category} className="field-control">
             <option value="">All categories</option>
             {categories.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
           </select>
         </label>
         <label className="grid gap-2">
-          <span className="utility-label">Sort</span>
-          <select name="sort" defaultValue={sort} className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3">
+          <span className="field-label">Sort</span>
+          <select name="sort" defaultValue={sort} className="field-control">
             {catalogSorts.map((value) => <option key={value} value={value}>{sortLabels[value]}</option>)}
           </select>
         </label>
@@ -93,17 +92,18 @@ export default async function ProductsPage({
       </form>
 
       <div className="mb-6 flex items-center justify-between">
-        <p className="utility-label" aria-live="polite">{products.length} {products.length === 1 ? "object" : "objects"}</p>
-        {(q || category) && <Link href="/products" className="utility-label underline">Clear filters</Link>}
+        <p className="text-sm text-[var(--muted)]" aria-live="polite">{products.length} {products.length === 1 ? "object" : "objects"}</p>
+        {(q || category) && <Link href="/products" className="text-action">Clear filters</Link>}
       </div>
 
       {products.length ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="product-grid">
           {products.map((product) => <ProductCard key={product.slug} product={product} />)}
         </div>
       ) : (
-        <div className="brutal-card py-24 text-center">
-          <p className="editorial text-3xl">Nothing sits at that crossroads yet.</p>
+        <div className="empty-state">
+          <h2>No products match these filters.</h2>
+          <p>Try a broader search or return to the full catalog.</p>
           <Link href="/products" className="button-primary mt-6">Reset the catalog</Link>
         </div>
       )}

@@ -1,27 +1,47 @@
 import Image from "next/image";
 import Link from "next/link";
+import { OpeningSequence } from "@/app/components/opening-sequence";
 import { ProductCard } from "@/app/components/product-card";
 import { RemoteImage } from "@/app/components/remote-image";
 import { prisma } from "@/lib/prisma";
-import { withAvailableStock } from "@/lib/inventory";
+import { getReservedQuantities, withAvailableStock } from "@/lib/inventory";
+
+const productSelect = {
+  name: true,
+  id: true,
+  slug: true,
+  maker: true,
+  origin: true,
+  price: true,
+  stock: true,
+  imageUrl: true,
+  category: { select: { name: true } },
+} as const;
 
 export default async function Home() {
-  const [storedFeatured, categories] = await Promise.all([
+  const [storedFeatured, storedArrivals, storedTrending, storedRecommendations, categories] = await Promise.all([
     prisma.product.findMany({
       where: { featured: true, archivedAt: null, category: { archivedAt: null } },
-      take: 6,
-      orderBy: { createdAt: "desc" },
-      select: {
-        name: true,
-        id: true,
-        slug: true,
-        maker: true,
-        origin: true,
-        price: true,
-        stock: true,
-        imageUrl: true,
-        category: { select: { name: true } },
-      },
+      take: 4,
+      orderBy: [{ createdAt: "desc" }, { name: "asc" }],
+      select: productSelect,
+    }),
+    prisma.product.findMany({
+      where: { archivedAt: null, category: { archivedAt: null } },
+      take: 4,
+      orderBy: [{ createdAt: "desc" }, { name: "asc" }],
+      select: productSelect,
+    }),
+    prisma.product.findMany({
+      where: { productViews: { some: {} }, archivedAt: null, category: { archivedAt: null } },
+      orderBy: [{ featured: "desc" }, { name: "asc" }],
+      select: { ...productSelect, _count: { select: { productViews: true } } },
+    }),
+    prisma.product.findMany({
+      where: { featured: false, archivedAt: null, category: { archivedAt: null } },
+      take: 4,
+      orderBy: [{ category: { position: "asc" } }, { name: "asc" }],
+      select: productSelect,
     }),
     prisma.category.findMany({
       where: { archivedAt: null },
@@ -29,110 +49,106 @@ export default async function Home() {
       select: { id: true, name: true, slug: true, description: true, imageUrl: true },
     }),
   ]);
-  const featured = await withAvailableStock(storedFeatured);
+  const rankedTrending = storedTrending
+    .sort((left, right) => right._count.productViews - left._count.productViews)
+    .slice(0, 4);
+  const trendingSource = [
+    ...rankedTrending,
+    ...storedFeatured.filter((product) => !rankedTrending.some((trendingProduct) => trendingProduct.id === product.id)),
+  ].slice(0, 4);
+  const reserved = await getReservedQuantities();
+  const [featured, arrivals, trending, recommendations] = await Promise.all([
+    withAvailableStock(storedFeatured, reserved),
+    withAvailableStock(storedArrivals, reserved),
+    withAvailableStock(trendingSource, reserved),
+    withAvailableStock(storedRecommendations, reserved),
+  ]);
 
   return (
     <main>
-      <section className="shell grid min-h-[calc(100svh-5rem)] items-center gap-10 py-12 lg:grid-cols-[1.2fr_.8fr]">
-        <div className="relative z-10">
-          <p className="utility-label mb-6">Kathmandu · 27.7172° N</p>
-          <h1 className="display" data-testid="kinetic-hero">
-            <span className="hero-word">GOODS</span>
-            <br />
-            <span className="hero-word hero-word-late"><span className="editorial font-normal text-[var(--vermilion)]">meet</span> HERE.</span>
-          </h1>
-          <div className="mt-10 flex max-w-xl flex-col items-start gap-6 border-l-2 border-[var(--line)] pl-5 sm:flex-row sm:items-end">
-            <p className="text-lg leading-relaxed">
-              A contemporary crossroads for useful, expressive goods from Nepali makers and the wider world.
-            </p>
-            <Link href="/products" className="button-primary shrink-0">Enter the market</Link>
+      <OpeningSequence />
+      <section className="shell hero-grid">
+        <div className="hero-copy">
+          <h1 className="display" data-testid="kinetic-hero">Objects<br />worth meeting.</h1>
+          <p className="hero-intro">CHOWK brings useful, expressive goods from Nepal and beyond into one considered marketplace.</p>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/products" className="button-primary">Shop the catalog</Link>
+            <Link href="#collections" className="button-secondary">Browse collections</Link>
           </div>
         </div>
-        <div className="relative mx-auto aspect-[4/5] w-full max-w-lg rotate-2 overflow-hidden rounded-[2rem] border-2 border-[var(--line)] shadow-[10px_10px_0_var(--line)]">
+        <div className="hero-image">
           <Image
             src="https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=85"
-            alt="Colorful prayer flags crossing a Kathmandu street"
+            alt="A lively street scene in Kathmandu"
             fill
             preload
-            sizes="(max-width: 1024px) 90vw, 38vw"
+            sizes="(max-width: 1024px) 100vw, 44vw"
             className="object-cover"
           />
-          <p className="utility-label absolute bottom-4 left-4 rounded-full bg-[var(--acid)] px-4 py-3 text-[#171713]">नयाँ दृष्टि / A new view</p>
+          <span className="image-caption">Kathmandu, Nepal</span>
         </div>
       </section>
 
-      <section id="weekly-edit" className="border-y-2 border-[var(--line)] bg-[var(--paper-deep)] py-20">
-        <div className="shell">
-          <div className="mb-10 grid gap-5 md:grid-cols-2 md:items-end">
-            <div>
-              <p className="utility-label text-[var(--vermilion)]">Weekly edit 01</p>
-              <h2 className="mt-3 text-5xl font-bold tracking-[-0.06em] sm:text-7xl">CITY / RIDGE</h2>
-            </div>
-            <p className="editorial max-w-lg text-2xl leading-snug md:justify-self-end">
-              Six things for the route between a desk in Patan and a cold morning above the valley.
-            </p>
-          </div>
-          {featured.length ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {featured.map((product) => <ProductCard key={product.slug} product={product} />)}
-            </div>
-          ) : (
-            <div className="brutal-card p-10 text-center">The next edit is being assembled.</div>
-          )}
-        </div>
-      </section>
+      <ProductSection id="featured" title="Featured now" description="A compact edit chosen for material, utility, and point of view." products={featured} />
+      <ProductSection id="arrivals" title="New arrivals" description="The latest additions across every part of the market." products={arrivals} tone="muted" />
 
-      <section id="categories" className="shell py-24">
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="utility-label">Four directions</p>
-            <h2 className="mt-2 text-5xl font-bold tracking-[-0.055em]">Find your way in.</h2>
-          </div>
-          <Link href="/products" className="button-secondary">View everything</Link>
-        </div>
-        <div className="grid gap-5 md:grid-cols-2">
-          {categories.map((category, index) => (
-            <Link
-              key={category.slug}
-              href={`/products?category=${category.slug}`}
-              className="group brutal-card grid min-h-72 grid-cols-[1fr_1.2fr] overflow-hidden p-3"
-            >
-              <div className="flex flex-col justify-between p-4">
-                <span className="utility-label">0{index + 1}</span>
-                <div>
-                  <h3 className="text-3xl font-bold tracking-[-0.05em]">{category.name}</h3>
-                  <p className="mt-2 text-sm text-[var(--muted)]">{category.description}</p>
-                </div>
-              </div>
-              <div className="image-frame min-h-64">
+      <section id="collections" className="shell discovery-section">
+        <SectionHeading title="Shop by collection" description="Move through the catalog by how an object lives with you." href="/products" />
+        <div className="collection-grid">
+          {categories.map((category) => (
+            <Link key={category.slug} href={`/products?category=${category.slug}`} className="collection-link">
+              <div className="image-frame aspect-[3/2]">
                 {category.imageUrl && <RemoteImage src={category.imageUrl} alt="" proxyPath={`/api/catalog-image/category/${category.id}`} />}
+              </div>
+              <div className="collection-copy">
+                <h3>{category.name}</h3>
+                <p>{category.description}</p>
+                <span>Explore collection →</span>
               </div>
             </Link>
           ))}
         </div>
       </section>
 
-      <section aria-label="Kathmandu field note" className="overflow-hidden border-y-2 border-[var(--line)] bg-[var(--acid)] py-6 text-[#171713]">
-        <div className="shell flex flex-wrap items-center justify-between gap-4">
-          <p className="text-3xl font-black tracking-[-0.05em] sm:text-5xl">चोकमा भेटौँ।</p>
-          <p className="editorial max-w-xl text-xl">Meet us at the crossroads, where a useful object always carries a story.</p>
-          <span className="utility-label">Kathmandu field note / 01</span>
-        </div>
-      </section>
-
-      <section className="bg-[var(--vermilion)] py-24 text-[#fff9ed]">
-        <div className="shell grid gap-10 lg:grid-cols-[.7fr_1.3fr]">
-          <p className="utility-label">Our point of view / हाम्रो सोच</p>
-          <div>
-            <h2 className="text-5xl font-bold leading-[.95] tracking-[-0.06em] sm:text-7xl">
-              LOCAL IS A PERSPECTIVE, NOT A LIMIT.
-            </h2>
-            <p className="editorial mt-8 max-w-2xl text-2xl leading-relaxed">
-              CHAUK puts a Patan metalworker beside a global design studio. We choose objects for how they live, last, and speak to one another.
-            </p>
-          </div>
-        </div>
-      </section>
+      <ProductSection id="trending" title="Trending at CHOWK" description="Products drawing attention across the market right now." products={trending} />
+      <ProductSection id="recommended" title="Worth another look" description="Everyday pieces selected from across our makers and collections." products={recommendations} tone="muted" />
     </main>
+  );
+}
+
+function ProductSection({
+  id,
+  title,
+  description,
+  products,
+  tone,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  products: Parameters<typeof ProductCard>[0]["product"][];
+  tone?: "muted";
+}) {
+  return (
+    <section id={id} className={tone === "muted" ? "discovery-band" : "shell discovery-section"}>
+      <div className={tone === "muted" ? "shell" : undefined}>
+        <SectionHeading title={title} description={description} href="/products" />
+        <div className="product-grid">
+          {products.map((product) => <ProductCard key={`${id}-${product.slug}`} product={product} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SectionHeading({ title, description, href }: { title: string; description: string; href: string }) {
+  return (
+    <div className="section-heading">
+      <div>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      <Link href={href} className="text-action">View all</Link>
+    </div>
   );
 }

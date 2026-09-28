@@ -1,14 +1,24 @@
 import { expect, test } from "@playwright/test";
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 120_000 });
 
 async function switchIdentity(page: import("@playwright/test").Page, name: string) {
   await page.getByRole("button", { name: "Open DevUI" }).click();
+  const switched = page.waitForResponse((response) => response.url().includes("/api/demo/session") && response.request().method() === "POST");
   await page.getByRole("dialog", { name: "Demo identities" }).getByRole("button", { name: new RegExp(name) }).click();
+  expect((await switched).ok()).toBe(true);
 }
 
 test("demo identities are real, distinct sessions", async ({ page }) => {
   await page.goto("/");
+  await switchIdentity(page, "Nirmal Kharal");
+  await page.reload();
+  await page.getByRole("button", { name: "Open DevUI" }).click();
+  const resetDialog = page.getByRole("dialog", { name: "Demo identities" });
+  await resetDialog.getByLabel("Type RESET to restore demo").fill("RESET");
+  await resetDialog.getByRole("button", { name: "Restore canonical snapshot" }).click();
+  await expect(resetDialog.getByRole("status")).toHaveText("Canonical demo restored.", { timeout: 60_000 });
+  await page.keyboard.press("Escape");
   await switchIdentity(page, "Suraj Shrestha");
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/cart");
@@ -146,7 +156,7 @@ test("administrator manages rich product lifecycle and auditable stock", async (
 
   await page.getByRole("button", { name: "Archive product" }).click();
   await page.goto("/products/browser-field-bag");
-  await expect(page.getByRole("heading", { name: "NOT AT THIS CHAUK." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "NOT AT THIS CHOWK." })).toBeVisible();
 
   await page.getByRole("button", { name: "Open DevUI" }).click();
   const dialog = page.getByRole("dialog", { name: "Demo identities" });
