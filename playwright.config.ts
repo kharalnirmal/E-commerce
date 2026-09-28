@@ -16,6 +16,10 @@ export default defineConfig({
   ],
   webServer: {
     command: process.env.CI ? "npm run start" : "npm run dev",
+    env: {
+      DEMO_MODE: "true",
+      DEMO_PASSWORD: process.env.DEMO_PASSWORD ?? "demo-password-for-tests",
+    },
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

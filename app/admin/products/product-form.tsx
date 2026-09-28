@@ -16,7 +16,7 @@ export function ProductForm({ categories }: { categories: CategoryOption[] }) {
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-4 max-w-lg">
+    <form action={formAction} className="brutal-card flex max-w-2xl flex-col gap-4 p-6">
       <label className="flex flex-col gap-1">
         Name
         <input
@@ -24,7 +24,7 @@ export function ProductForm({ categories }: { categories: CategoryOption[] }) {
           required
           minLength={2}
           maxLength={120}
-          className="p-2 border"
+          className="min-h-11 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] p-2"
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -32,7 +32,7 @@ export function ProductForm({ categories }: { categories: CategoryOption[] }) {
         <textarea
           name="description"
           maxLength={5000}
-          className="p-2 border"
+          className="min-h-24 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] p-2"
         ></textarea>
       </label>
 
@@ -44,7 +44,7 @@ export function ProductForm({ categories }: { categories: CategoryOption[] }) {
           min="0"
           step="0.01"
           required
-          className="p-2 border"
+          className="min-h-11 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] p-2"
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -56,13 +56,13 @@ export function ProductForm({ categories }: { categories: CategoryOption[] }) {
           step="1"
           defaultValue="0"
           required
-          className="p-2 border"
+          className="min-h-11 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] p-2"
         />
       </label>
 
       <label className="flex flex-col gap-1">
         Image URL
-        <input name="imageUrl" type="url" className="p-2 border" />
+        <input name="imageUrl" type="url" className="min-h-11 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] p-2" />
       </label>
 
       <label className="flex flex-col gap-1">
@@ -71,7 +71,7 @@ export function ProductForm({ categories }: { categories: CategoryOption[] }) {
           name="categoryId"
           required
           defaultValue=""
-          className="p-2 border"
+          className="min-h-11 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] p-2"
         >
           <option value="" disabled>
             Select a Category
@@ -87,7 +87,7 @@ export function ProductForm({ categories }: { categories: CategoryOption[] }) {
       <button
         type="submit"
         disabled={isPending || categories.length === 0}
-        className="bg-black disabled:opacity-50 p-2 text-white"
+        className="button-primary"
       >
         {isPending ? "Saving..." : "Create product"}
       </button>

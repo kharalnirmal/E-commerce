@@ -14,8 +14,11 @@ export default async function CategoriesPage() {
   });
 
   return (
-    <main className="space-y-8 mx-auto p-6 max-w-2xl text-white">
-      <h1 className="font-bold text-2xl">Categories</h1>
+    <main className="shell space-y-10 py-12 sm:py-20">
+      <div>
+        <p className="utility-label text-[var(--vermilion)]">Administration</p>
+        <h1 className="mt-2 text-6xl font-bold tracking-[-0.07em]">CATEGORIES</h1>
+      </div>
 
       <CategoryForm />
 
@@ -25,9 +28,9 @@ export default async function CategoriesPage() {
         {categories.length === 0 ? (
           <p>No categories yet.</p>
         ) : (
-          <ul className="list-disc list-inside">
+          <ul className="grid gap-4 sm:grid-cols-2">
             {categories.map((category) => (
-              <li key={category.id}>{category.name}</li>
+              <li key={category.id} className="brutal-card p-5 text-xl font-bold">{category.name}</li>
             ))}
           </ul>
         )}

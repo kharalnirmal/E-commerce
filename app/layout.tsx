@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import Script from "next/script";
+import { headers } from "next/headers";
+import { connection } from "next/server";
+import { auth } from "@/lib/auth";
+import { demoIdentities, isDemoEnabled, type DemoIdentity } from "@/lib/demo";
+import { DevUI } from "@/app/components/dev-ui";
 import { StorefrontFooter } from "@/app/components/storefront-footer";
 import { StorefrontHeader } from "@/app/components/storefront-header";
 import "./globals.css";
@@ -29,7 +34,15 @@ export const metadata: Metadata = {
     "A contemporary Nepal marketplace for useful, expressive goods from local makers and around the world.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  await connection();
+  let activeIdentity: DemoIdentity | null = null;
+  if (isDemoEnabled()) {
+    const session = await auth.api.getSession({ headers: await headers() });
+    activeIdentity = (Object.entries(demoIdentities) as [DemoIdentity, (typeof demoIdentities)[DemoIdentity]][])
+      .find(([, identity]) => identity.email === session?.user.email)?.[0] ?? null;
+  }
+
   return (
     <html lang="en" data-theme="light" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body
@@ -38,6 +51,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <StorefrontHeader />
         <div className="site-content">{children}</div>
         <StorefrontFooter />
+        {isDemoEnabled() && <DevUI activeIdentity={activeIdentity} />}
         <Script id="chauk-theme" strategy="beforeInteractive">
           {`(function(){try{var t=localStorage.getItem("chauk-theme");var d=t||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",d)}catch(e){}})()`}
         </Script>

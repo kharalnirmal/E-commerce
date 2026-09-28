@@ -1,8 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import requireUser from "@/lib/require-user";
+import { parseCartQuantity } from "@/lib/cart";
+import {
+  addCartItem,
+  removeCartItemForUser,
+  updateCartItem,
+} from "@/lib/cart-service";
 
 type State = { message: string };
 
@@ -13,104 +18,46 @@ export async function addToCart(
   const userId = await requireUser();
 
   const productIdValue = formData.get("productId");
-  const quantityValue = formData.get("quantity");
-
   const productId = typeof productIdValue === "string" ? productIdValue : "";
-  const quantityText =
-    typeof quantityValue === "string" ? quantityValue.trim() : "";
-
-  if (!productId || !/^\d+$/.test(quantityText)) {
+  const quantity = parseCartQuantity(formData.get("quantity"));
+  if (!productId || quantity === null) {
     return { message: "Choose a valid product and quantity." };
   }
 
-  const quantity = Number(quantityText);
-
-  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
-    return { message: "Quantity must be between 1 and 99." };
-  }
-
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-    select: { id: true, stock: true },
-  });
-
-  if (!product) {
-    return { message: "Product not found." };
-  }
-
-  if (quantity > product.stock) {
-    return { message: "Not enough stock available." };
-  }
-
-  const updated = await prisma.$queryRaw<{ quantity: number }[]>`
-    INSERT INTO "cart_item" ("id", "userId", "productId", "quantity", "createdAt", "updatedAt")
-    VALUES (${crypto.randomUUID()}, ${userId}, ${productId}, ${quantity}, NOW(), NOW())
-    ON CONFLICT ("userId", "productId") DO UPDATE
-    SET "quantity" = "cart_item"."quantity" + EXCLUDED."quantity", "updatedAt" = NOW()
-    WHERE "cart_item"."quantity" + EXCLUDED."quantity" <= ${product.stock}
-      AND "cart_item"."quantity" + EXCLUDED."quantity" <= 99
-    RETURNING "quantity"
-  `;
-
-  if (updated.length === 0) {
-    return { message: "Not enough stock available, or the cart limit is 99." };
-  }
-
+  const message = await addCartItem(userId, productId, quantity);
   revalidatePath("/cart");
-  return { message: "Added to cart." };
+  return { message };
 }
 
-export async function updateCartQuantity(formData: FormData) {
+export async function updateCartQuantity(
+  _previousState: State,
+  formData: FormData,
+): Promise<State> {
   const userId = await requireUser();
 
   const itemId = formData.get("itemId");
-  const quantityValue = formData.get("quantity");
-
-  if (
-    typeof itemId !== "string" ||
-    typeof quantityValue !== "string" ||
-    !/^\d+$/.test(quantityValue)
-  ) {
-    return;
+  const quantity = parseCartQuantity(formData.get("quantity"));
+  if (typeof itemId !== "string" || quantity === null) {
+    return { message: "Quantity must be a whole number between 1 and 99." };
   }
 
-  const quantity = Number(quantityValue);
-
-  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
-    return;
-  }
-
-  const item = await prisma.cartItem.findFirst({
-    where: { id: itemId, userId },
-    select: {
-      id: true,
-      product: { select: { stock: true } },
-    },
-  });
-
-  if (!item || quantity > item.product.stock) {
-    return;
-  }
-
-  await prisma.cartItem.updateMany({
-    where: { id: item.id, userId },
-    data: { quantity },
-  });
-
+  const message = await updateCartItem(userId, itemId, quantity);
   revalidatePath("/cart");
+  return { message };
 }
 
-export async function removeCartItem(formData: FormData) {
+export async function removeCartItem(
+  _previousState: State,
+  formData: FormData,
+): Promise<State> {
   const userId = await requireUser();
   const itemId = formData.get("itemId");
 
   if (typeof itemId !== "string") {
-    return;
+    return { message: "Choose a valid cart item." };
   }
 
-  await prisma.cartItem.deleteMany({
-    where: { id: itemId, userId },
-  });
-
+  const message = await removeCartItemForUser(userId, itemId);
   revalidatePath("/cart");
+  return { message };
 }

@@ -12,8 +12,8 @@ export default function CategoryForm() {
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <label htmlFor="name">Category name</label>
+    <form action={formAction} className="brutal-card flex max-w-xl flex-col gap-3 p-6">
+      <label htmlFor="name" className="utility-label">Category name</label>
 
       <input
         id="name"
@@ -22,13 +22,13 @@ export default function CategoryForm() {
         minLength={2}
         maxLength={80}
         required
-        className="px-3 py-2 border rounded"
+        className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3"
       />
 
       <button
         type="submit"
         disabled={isPending}
-        className="bg-black disabled:opacity-50 px-4 py-2 rounded text-white"
+        className="button-primary"
       >
         {isPending ? "Saving..." : "Create category"}
       </button>
