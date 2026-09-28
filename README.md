@@ -20,6 +20,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 Set `DEMO_MODE=true` and provide a `DEMO_PASSWORD` of at least eight characters to enable the bottom-right DevUI and shared Nirmal, Suraj, and Aadarsh identities. Leave `DEMO_MODE` unset or set it to any value other than `true` to remove all demo login and reset behavior. Run `npm run seed` after enabling demo mode to create the canonical personas and activity.
 
+### eSewa checkout
+
+Production checkout requires `APP_URL`, `ESEWA_PRODUCT_CODE`, `ESEWA_SECRET`, `ESEWA_PAYMENT_URL`, and `ESEWA_STATUS_URL`. Set `ESEWA_GATEWAY_MODE=mock` only for local demos and automated tests; mock mode performs no gateway network calls.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

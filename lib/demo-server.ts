@@ -45,9 +45,13 @@ export async function restoreCanonicalDemo() {
     await tx.productView.deleteMany();
     await tx.cartItem.deleteMany();
     await tx.stockAdjustment.deleteMany();
+    await tx.inventoryReservationItem.deleteMany();
+    await tx.inventoryReservation.deleteMany();
+    await tx.orderTimelineEvent.deleteMany();
     await tx.payment.deleteMany();
     await tx.orderItem.deleteMany();
     await tx.order.deleteMany();
+    await tx.orderNumberSequence.deleteMany();
     await tx.product.deleteMany();
     await tx.category.deleteMany();
 

@@ -5,6 +5,7 @@ import { formatNpr } from "@/lib/storefront";
 import { prisma } from "@/lib/prisma";
 import AddToCartForm from "./add-to-cart-form";
 import { RemoteImage } from "@/app/components/remote-image";
+import { getReservedQuantities } from "@/lib/inventory";
 
 type ProductPageProps = { params: Promise<{ id: string }> };
 
@@ -34,6 +35,8 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
   });
 
   if (!product) notFound();
+  const reserved = await getReservedQuantities();
+  const availableStock = Math.max(0, product.stock - (reserved.get(product.id) ?? 0));
 
   return (
     <main className="shell py-10 sm:py-16">
@@ -61,11 +64,11 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
           <div className="my-8 h-0.5 bg-[var(--line)]" />
           <p className="max-w-xl text-lg leading-relaxed text-[var(--muted)]">{product.description}</p>
           <div className="mt-8 flex items-center gap-3">
-            <span className={`h-3 w-3 rounded-full ${product.stock > 0 ? "bg-green-600" : "bg-[var(--vermilion)]"}`} />
-            <p className="utility-label">{product.stock > 0 ? `${product.stock} in stock` : "Sold out · unavailable to purchase"}</p>
+            <span className={`h-3 w-3 rounded-full ${availableStock > 0 ? "bg-green-600" : "bg-[var(--vermilion)]"}`} />
+            <p className="utility-label">{availableStock > 0 ? `${availableStock} in stock` : "Sold out · unavailable to purchase"}</p>
           </div>
           <div className="mt-10 rounded-2xl border-2 border-[var(--line)] bg-[var(--surface)] p-5">
-            <AddToCartForm productId={product.id} stock={product.stock} />
+            <AddToCartForm productId={product.id} stock={availableStock} />
           </div>
           <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border-2 border-[var(--line)] bg-[var(--line)] text-sm">
             <div className="bg-[var(--paper)] p-4"><dt className="utility-label text-[var(--muted)]">Maker</dt><dd className="mt-2">{product.maker}</dd></div>

@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -8,19 +11,22 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL,
     trace: "on-first-retry",
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: process.env.CI ? "npm run start" : "npm run dev",
+    command: process.env.CI ? `npm run start -- --port ${port}` : `npm run dev -- --port ${port}`,
     env: {
       DEMO_MODE: "true",
       DEMO_PASSWORD: process.env.DEMO_PASSWORD ?? "demo-password-for-tests",
+      ESEWA_GATEWAY_MODE: "mock",
+      APP_URL: baseURL,
+      BETTER_AUTH_URL: baseURL,
     },
-    url: "http://localhost:3000",
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

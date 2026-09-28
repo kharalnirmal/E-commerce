@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ProductCard } from "@/app/components/product-card";
 import { prisma } from "@/lib/prisma";
 import { catalogSorts, readCatalogParams } from "@/lib/storefront";
+import { withAvailableStock } from "@/lib/inventory";
 
 const sortLabels = {
   featured: "Featured first",
@@ -26,7 +27,7 @@ export default async function ProductsPage({
           ? [{ createdAt: "desc" }]
           : [{ featured: "desc" }, { createdAt: "desc" }];
 
-  const [products, categories] = await Promise.all([
+  const [storedProducts, categories] = await Promise.all([
     prisma.product.findMany({
       where: {
         archivedAt: null,
@@ -58,6 +59,7 @@ export default async function ProductsPage({
     }),
     prisma.category.findMany({ where: { archivedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }], select: { name: true, slug: true } }),
   ]);
+  const products = await withAvailableStock(storedProducts);
 
   return (
     <main className="shell py-12 sm:py-20">

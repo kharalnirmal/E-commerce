@@ -25,6 +25,7 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+  ABANDONED
 }
 
 model User {
@@ -112,28 +113,29 @@ model Category {
 }
 
 model Product {
-  id                String            @id @default(cuid())
+  id                String                     @id @default(cuid())
   name              String
-  slug              String            @unique
-  sku               String            @unique
+  slug              String                     @unique
+  sku               String                     @unique
   maker             String
   origin            String
-  featured          Boolean           @default(false)
+  featured          Boolean                    @default(false)
   description       String?
-  price             Decimal           @db.Decimal(12, 2)
-  stock             Int               @default(0)
-  lowStockThreshold Int               @default(5)
+  price             Decimal                    @db.Decimal(12, 2)
+  stock             Int                        @default(0)
+  lowStockThreshold Int                        @default(5)
   imageUrl          String?
   archivedAt        DateTime?
   categoryId        String
-  category          Category          @relation(fields: [categoryId], references: [id])
+  category          Category                   @relation(fields: [categoryId], references: [id])
   cartItems         CartItem[]
   orderItems        OrderItem[]
   productViews      ProductView[]
   images            ProductImage[]
   stockAdjustments  StockAdjustment[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  reservationItems  InventoryReservationItem[]
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
 
   @@index([categoryId])
   @@map("product")
@@ -187,15 +189,28 @@ model CartItem {
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  status      OrderStatus @default(PENDING)
-  totalAmount Decimal     @db.Decimal(12, 2)
-  orderItems  OrderItem[]
-  payments    Payment[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id             String                 @id @default(cuid())
+  displayNumber  String                 @unique
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id])
+  status         OrderStatus            @default(PENDING)
+  subtotalAmount Decimal                @db.Decimal(12, 2)
+  deliveryFee    Decimal                @db.Decimal(12, 2)
+  totalAmount    Decimal                @db.Decimal(12, 2)
+  recipientName  String
+  phone          String
+  province       String
+  district       String
+  municipality   String
+  ward           String
+  streetAddress  String
+  landmark       String?
+  orderItems     OrderItem[]
+  payments       Payment[]
+  reservations   InventoryReservation[]
+  timeline       OrderTimelineEvent[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   @@index([userId])
   @@map("orders")
@@ -206,7 +221,12 @@ model OrderItem {
   orderId         String
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId       String
+  cartItemId      String
   product         Product  @relation(fields: [productId], references: [id])
+  productName     String
+  productSku      String
+  productMaker    String
+  productImageUrl String?
   quantity        Int
   priceAtPurchase Decimal  @db.Decimal(12, 2)
   createdAt       DateTime @default(now())
@@ -218,17 +238,75 @@ model OrderItem {
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  orderId       String
-  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  transactionId String?       @unique
-  amount        Decimal       @db.Decimal(12, 2)
-  status        PaymentStatus @default(PENDING)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                     String                @id @default(cuid())
+  orderId                String
+  order                  Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  transactionId          String                @unique
+  attemptNumber          Int
+  gateway                String                @default("ESEWA")
+  gatewayTransactionCode String?
+  amount                 Decimal               @db.Decimal(12, 2)
+  status                 PaymentStatus         @default(PENDING)
+  failureReason          String?
+  verifiedAt             DateTime?
+  reservation            InventoryReservation?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 
+  @@unique([orderId, attemptNumber])
   @@index([orderId])
   @@map("payment")
+}
+
+model InventoryReservation {
+  id         String                     @id @default(cuid())
+  orderId    String
+  order      Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  paymentId  String                     @unique
+  payment    Payment                    @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  releasedAt DateTime?
+  consumedAt DateTime?
+  items      InventoryReservationItem[]
+  createdAt  DateTime                   @default(now())
+
+  @@index([orderId])
+  @@index([expiresAt, releasedAt, consumedAt])
+  @@map("inventory_reservation")
+}
+
+model InventoryReservationItem {
+  id            String               @id @default(cuid())
+  reservationId String
+  reservation   InventoryReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity      Int
+
+  @@unique([reservationId, productId])
+  @@index([productId])
+  @@map("inventory_reservation_item")
+}
+
+model OrderTimelineEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type      String
+  detail    String
+  dedupeKey String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
+  @@map("order_timeline_event")
+}
+
+model OrderNumberSequence {
+  year      Int      @id
+  lastValue Int
+  updatedAt DateTime @updatedAt
+
+  @@map("order_number_sequence")
 }
 
 model ProductView {

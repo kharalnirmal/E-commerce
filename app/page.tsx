@@ -3,9 +3,10 @@ import Link from "next/link";
 import { ProductCard } from "@/app/components/product-card";
 import { RemoteImage } from "@/app/components/remote-image";
 import { prisma } from "@/lib/prisma";
+import { withAvailableStock } from "@/lib/inventory";
 
 export default async function Home() {
-  const [featured, categories] = await Promise.all([
+  const [storedFeatured, categories] = await Promise.all([
     prisma.product.findMany({
       where: { featured: true, archivedAt: null, category: { archivedAt: null } },
       take: 6,
@@ -28,6 +29,7 @@ export default async function Home() {
       select: { id: true, name: true, slug: true, description: true, imageUrl: true },
     }),
   ]);
+  const featured = await withAvailableStock(storedFeatured);
 
   return (
     <main>

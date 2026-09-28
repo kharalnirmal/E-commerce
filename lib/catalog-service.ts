@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSkuBase } from "@/lib/sku";
 import { prisma } from "@/lib/prisma";
+import { lockInventory } from "@/lib/inventory";
 
 export type ProductInput = {
   name: string;
@@ -97,14 +98,22 @@ export async function setProductArchived(productId: string, archived: boolean) {
 
 export async function adjustProductStock(productId: string, administratorId: string, delta: number, reason: string) {
   return prisma.$transaction(async (tx) => {
+    await lockInventory(tx);
     await tx.$queryRaw`SELECT "id" FROM "product" WHERE "id" = ${productId} FOR UPDATE`;
     const product = await tx.product.findUnique({ where: { id: productId }, select: { stock: true } });
     if (!product) return { error: "Product not found." } as const;
     const administrator = await tx.user.findUnique({ where: { id: administratorId }, select: { name: true } });
     if (!administrator) return { error: "Administrator not found." } as const;
     const resultingStock = product.stock + delta;
+    const reserved = await tx.inventoryReservationItem.aggregate({
+      where: { productId, reservation: { releasedAt: null, consumedAt: null, expiresAt: { gt: new Date() } } },
+      _sum: { quantity: true },
+    });
     if (!Number.isSafeInteger(resultingStock) || resultingStock < 0 || resultingStock > 2_147_483_647) {
       return { error: "That adjustment would create an invalid stock total." } as const;
+    }
+    if (resultingStock < (reserved._sum.quantity ?? 0)) {
+      return { error: "That adjustment would consume inventory reserved by active checkouts." } as const;
     }
     await tx.product.update({ where: { id: productId }, data: { stock: resultingStock } });
     const adjustment = await tx.stockAdjustment.create({

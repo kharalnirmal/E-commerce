@@ -13,11 +13,21 @@ export async function addCartItem(userId: string, productId: string, quantity: n
     WHERE product."id" = ${productId}
       AND product."archivedAt" IS NULL
       AND category."archivedAt" IS NULL
-      AND ${quantity} <= product."stock"
+      AND ${quantity} <= product."stock" - COALESCE((
+        SELECT SUM(item."quantity") FROM "inventory_reservation_item" AS item
+        INNER JOIN "inventory_reservation" AS reservation ON reservation."id" = item."reservationId"
+        WHERE item."productId" = product."id" AND reservation."releasedAt" IS NULL
+          AND reservation."consumedAt" IS NULL AND reservation."expiresAt" > NOW()
+      ), 0)
     ON CONFLICT ("userId", "productId") DO UPDATE
     SET "quantity" = "cart_item"."quantity" + EXCLUDED."quantity", "updatedAt" = NOW()
     WHERE "cart_item"."quantity" + EXCLUDED."quantity" <= (
-        SELECT product."stock" FROM "product" AS product
+        SELECT product."stock" - COALESCE((
+          SELECT SUM(item."quantity") FROM "inventory_reservation_item" AS item
+          INNER JOIN "inventory_reservation" AS reservation ON reservation."id" = item."reservationId"
+          WHERE item."productId" = product."id" AND reservation."releasedAt" IS NULL
+            AND reservation."consumedAt" IS NULL AND reservation."expiresAt" > NOW()
+        ), 0) FROM "product" AS product
         INNER JOIN "category" AS category ON category."id" = product."categoryId"
         WHERE product."id" = EXCLUDED."productId" AND product."archivedAt" IS NULL AND category."archivedAt" IS NULL
       )
@@ -41,7 +51,12 @@ export async function updateCartItem(userId: string, itemId: string, quantity: n
       AND product."id" = cart."productId"
       AND product."archivedAt" IS NULL
       AND category."archivedAt" IS NULL
-      AND ${quantity} <= product."stock"
+      AND ${quantity} <= product."stock" - COALESCE((
+        SELECT SUM(item."quantity") FROM "inventory_reservation_item" AS item
+        INNER JOIN "inventory_reservation" AS reservation ON reservation."id" = item."reservationId"
+        WHERE item."productId" = product."id" AND reservation."releasedAt" IS NULL
+          AND reservation."consumedAt" IS NULL AND reservation."expiresAt" > NOW()
+      ), 0)
     RETURNING cart."id"
   `;
   return updated.length
