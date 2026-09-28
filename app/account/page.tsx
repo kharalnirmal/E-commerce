@@ -11,8 +11,9 @@ export default async function AccountPage() {
   return (
     <main className="shell py-12 sm:py-20">
       <section className="border-y border-[var(--line-soft)] py-8 sm:py-12">
-        <h1 className="max-w-4xl text-6xl font-semibold leading-[0.9] tracking-[-0.07em] sm:text-8xl">Namaste, {session.user.name}.</h1>
-        <p className="mt-6 text-[var(--muted)]">{session.user.email}</p>
+        <h1 className="max-w-4xl text-6xl font-semibold leading-[0.9] tracking-[-0.07em] sm:text-8xl">Account</h1>
+        <p className="mt-6 text-xl font-semibold">{session.user.name}</p>
+        <p className="mt-2 text-[var(--muted)]">{session.user.email}</p>
 
         <div className="mt-12 grid border-t border-[var(--line-soft)] sm:grid-cols-3">
           <Link href="/orders" className="group border-b border-[var(--line-soft)] py-6 text-xl font-semibold sm:border-r sm:px-6">

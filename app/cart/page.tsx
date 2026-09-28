@@ -5,8 +5,9 @@ import { CartItemControls } from "./cart-item-controls";
 import Link from "next/link";
 import { getReservedQuantities } from "@/lib/inventory";
 
-export default async function CartPage() {
+export default async function CartPage({ searchParams }: { searchParams: Promise<{ payment?: string }> }) {
   const userId = await requireUser();
+  const query = await searchParams;
 
   const [items, reserved] = await Promise.all([prisma.cartItem.findMany({
     where: { userId },
@@ -55,6 +56,13 @@ export default async function CartPage() {
         </div>
         <p className="utility-label">{items.length} {items.length === 1 ? "item" : "items"}</p>
       </header>
+
+      {query.payment === "verification-failed" && (
+        <div role="alert" className="mt-6 border border-[var(--line)] p-4">
+          The eSewa response could not be matched to an order. Check your order history before attempting another payment.
+          <Link href="/orders" className="text-action ml-2">View orders</Link>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <section className="empty-state" aria-labelledby="empty-cart-title">

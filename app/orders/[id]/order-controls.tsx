@@ -21,6 +21,16 @@ export function RetryPaymentButton() {
   );
 }
 
+export function CheckPaymentButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button type="submit" className="button-primary w-full" disabled={pending}>
+      {pending ? "Checking eSewa..." : "Check payment status"}
+    </button>
+  );
+}
+
 export function CancelOrderButton({ orderId, mode }: { orderId: string; mode: "paid" | "unpaid" | null }) {
   const [state, action, pending] = useActionState(cancelOrder.bind(null, orderId), initialState);
   const statusRef = useRef<HTMLParagraphElement>(null);

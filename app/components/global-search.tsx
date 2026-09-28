@@ -21,6 +21,7 @@ export function GlobalSearch() {
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (query.trim().length < 2) return;
@@ -28,12 +29,17 @@ export function GlobalSearch() {
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setLoading(true);
+      setFailed(false);
       try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("Search request failed.");
         const data = (await response.json()) as { products: Suggestion[] };
         setProducts(data.products);
       } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setProducts([]);
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setProducts([]);
+          setFailed(true);
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -92,6 +98,7 @@ export function GlobalSearch() {
               if (nextQuery.trim().length < 2) {
                 setProducts([]);
                 setLoading(false);
+                setFailed(false);
               }
             }}
             placeholder="Product, maker, place..."
@@ -100,7 +107,8 @@ export function GlobalSearch() {
           <div className="search-results" aria-live="polite">
             {loading && <p className="search-note">Searching...</p>}
             {!loading && query.trim().length < 2 && <p className="search-note">Type at least two characters.</p>}
-            {!loading && query.trim().length >= 2 && products.length === 0 && <p className="search-note">No suggestions yet.</p>}
+            {!loading && failed && <p className="search-note" role="alert">Search could not be loaded. Use the full catalog below.</p>}
+            {!loading && !failed && query.trim().length >= 2 && products.length === 0 && <p className="search-note">No matching products.</p>}
             {products.map((product) => (
               <Link key={product.id} href={`/products/${product.slug}`} className="search-result" onClick={close}>
                 <span><strong>{product.name}</strong><small>{product.maker}</small></span>

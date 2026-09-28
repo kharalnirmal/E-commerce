@@ -17,11 +17,11 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: {
-    default: "CHOWK | Objects worth meeting",
+    default: "CHOWK",
     template: "%s | CHOWK",
   },
   description:
-    "A contemporary Nepal marketplace for useful, expressive goods from local makers and around the world.",
+    "Shop goods from independent makers in Nepal and beyond.",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

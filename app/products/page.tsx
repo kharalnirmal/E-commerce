@@ -66,7 +66,7 @@ export default async function ProductsPage({
       <div className="catalog-heading">
         <div>
           <h1>Shop all</h1>
-          <p>Objects for getting dressed, settling in, tuning out, and heading uphill.</p>
+          <p>Browse the complete catalog by product, maker, or category.</p>
         </div>
       </div>
 

@@ -55,7 +55,7 @@ export default async function ProductsPage() {
               <li key={product.id} className="brutal-card p-5">
                 <div className="flex items-start justify-between gap-3">
                   <strong className="text-xl">{product.name}</strong>
-                  {product.featured && <span className="utility-label rounded-full bg-[var(--acid)] px-3 py-2 text-[#171713]">Featured</span>}
+                  {product.featured && <span className="utility-label rounded-full bg-[var(--acid)] px-3 py-2 text-[var(--ink)]">Featured</span>}
                 </div>
                 <p className="mt-3">Price: {formatNpr(product.price)}</p>
                 <p className="font-mono text-sm">{product.sku}</p>

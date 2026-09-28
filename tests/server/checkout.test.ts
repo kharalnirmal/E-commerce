@@ -9,6 +9,7 @@ import {
   decodeAndVerifyEsewaResponse,
   signEsewaMessage,
 } from "@/lib/esewa";
+import { getEsewaConfig, verifyEsewaTransaction } from "@/lib/esewa-gateway";
 
 const validAddress = {
   recipientName: "Suraj Kharal",
@@ -47,6 +48,51 @@ describe("checkout rules", () => {
 });
 
 describe("eSewa gateway messages", () => {
+  it("requires an explicit gateway mode and keeps mock, UAT, and production distinct", () => {
+    expect(() => getEsewaConfig({})).toThrow("ESEWA_GATEWAY_MODE");
+    expect(() => getEsewaConfig({ ESEWA_GATEWAY_MODE: "live" })).toThrow("mock, uat, or production");
+
+    expect(getEsewaConfig({ ESEWA_GATEWAY_MODE: "mock", APP_URL: "http://localhost:3000" })).toMatchObject({
+      mode: "mock",
+      productCode: "EPAYTEST",
+      paymentUrl: "http://localhost:3000/api/payments/esewa/mock",
+    });
+
+    const hosted = {
+      APP_URL: "https://shop.test",
+      ESEWA_PRODUCT_CODE: "EPAYTEST",
+      ESEWA_SECRET: "sandbox-secret",
+      ESEWA_PAYMENT_URL: "https://rc-epay.esewa.com.np/api/epay/main/v2/form",
+      ESEWA_STATUS_URL: "https://uat.esewa.com.np/api/epay/transaction/status/",
+    };
+    expect(getEsewaConfig({ ...hosted, ESEWA_GATEWAY_MODE: "uat" }).mode).toBe("uat");
+    expect(getEsewaConfig({
+      ...hosted,
+      ESEWA_GATEWAY_MODE: "production",
+      ESEWA_PAYMENT_URL: "https://epay.esewa.com.np/api/epay/main/v2/form",
+      ESEWA_STATUS_URL: "https://epay.esewa.com.np/api/epay/transaction/status/",
+    }).mode).toBe("production");
+  });
+
+  it("rejects mode-specific hosted gateway mistakes", () => {
+    expect(() => getEsewaConfig({
+      ESEWA_GATEWAY_MODE: "uat",
+      APP_URL: "http://localhost:3000",
+      ESEWA_PRODUCT_CODE: "EPAYTEST",
+      ESEWA_SECRET: "sandbox-secret",
+      ESEWA_PAYMENT_URL: "https://rc-epay.esewa.com.np/api/epay/main/v2/form",
+      ESEWA_STATUS_URL: "https://uat.esewa.com.np/api/epay/transaction/status/",
+    })).toThrow("public HTTPS APP_URL");
+    expect(() => getEsewaConfig({
+      ESEWA_GATEWAY_MODE: "production",
+      APP_URL: "https://shop.test",
+      ESEWA_PRODUCT_CODE: "EPAYTEST",
+      ESEWA_SECRET: "secret",
+      ESEWA_PAYMENT_URL: "https://rc-epay.esewa.com.np/api/epay/main/v2/form",
+      ESEWA_STATUS_URL: "https://uat.esewa.com.np/api/epay/transaction/status/",
+    })).toThrow("matching production eSewa endpoints");
+  });
+
   it("signs the merchant-controlled payment request", () => {
     const request = buildEsewaPaymentRequest({
       amountPaisa: 500_000,
@@ -92,5 +138,62 @@ describe("eSewa gateway messages", () => {
 
     const tampered = Buffer.from(Buffer.from(encoded, "base64").toString().replace("5150", "1")).toString("base64");
     expect(() => decodeAndVerifyEsewaResponse(tampered, "8gBm/:&EnhH.1/q")).toThrow("signature");
+  });
+
+  it("binds hosted status responses to amount and transaction identity", async () => {
+    const config = getEsewaConfig({
+      ESEWA_GATEWAY_MODE: "uat",
+      APP_URL: "https://shop.test",
+      ESEWA_PRODUCT_CODE: "EPAYTEST",
+      ESEWA_SECRET: "sandbox-secret",
+      ESEWA_PAYMENT_URL: "https://rc-epay.esewa.com.np/api/epay/main/v2/form",
+      ESEWA_STATUS_URL: "https://uat.esewa.com.np/api/epay/transaction/status/",
+    });
+    const response = {
+      transactionUuid: "payment-123",
+      transactionCode: "0004T5I",
+      status: "COMPLETE",
+      totalAmount: "5150",
+      productCode: "EPAYTEST",
+    };
+    const matchingFetch = async () => Response.json({
+      status: "COMPLETE",
+      total_amount: "5150",
+      pid: "payment-123",
+      scd: "EPAYTEST",
+      refId: "0004T5I",
+    });
+    expect(await verifyEsewaTransaction(response, 515_000, config, matchingFetch)).toEqual({ outcome: "complete", referenceId: "0004T5I" });
+    expect(await verifyEsewaTransaction({ ...response, transactionCode: "" }, 515_000, config, matchingFetch)).toEqual({ outcome: "complete", referenceId: "0004T5I" });
+
+    const mismatchedFetch = async () => Response.json({
+      status: "COMPLETE",
+      total_amount: "5150",
+      pid: "another-payment",
+      scd: "EPAYTEST",
+      refId: "0004T5I",
+    });
+    expect(await verifyEsewaTransaction(response, 515_000, config, mismatchedFetch)).toEqual({ outcome: "mismatch" });
+  });
+
+  it("keeps pending and unavailable verification non-terminal", async () => {
+    const config = getEsewaConfig({
+      ESEWA_GATEWAY_MODE: "uat",
+      APP_URL: "https://shop.test",
+      ESEWA_PRODUCT_CODE: "EPAYTEST",
+      ESEWA_SECRET: "sandbox-secret",
+      ESEWA_PAYMENT_URL: "https://rc-epay.esewa.com.np/api/epay/main/v2/form",
+      ESEWA_STATUS_URL: "https://uat.esewa.com.np/api/epay/transaction/status/",
+    });
+    const response = {
+      transactionUuid: "payment-123",
+      transactionCode: "0004T5I",
+      status: "PENDING",
+      totalAmount: "5150",
+      productCode: "EPAYTEST",
+    };
+    expect(await verifyEsewaTransaction(response, 515_000, config, async () => Response.json({ status: "PENDING", totalAmount: "5150", pid: "payment-123", scd: "EPAYTEST", refId: null }))).toEqual({ outcome: "pending" });
+    expect(await verifyEsewaTransaction(response, 515_000, config, async () => Response.json({ status: "AMBIGUOUS", totalAmount: "5150", pid: "payment-123", scd: "EPAYTEST", refId: "0004T5I" }))).toEqual({ outcome: "pending" });
+    expect(await verifyEsewaTransaction(response, 515_000, config, async () => new Response(null, { status: 503 }))).toEqual({ outcome: "unavailable" });
   });
 });

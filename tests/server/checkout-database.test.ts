@@ -13,11 +13,11 @@ const address: DeliveryAddress = {
   landmark: "Water tank",
 };
 
-async function signedSuccess(transactionUuid: string, totalAmount: string) {
+async function signedResponse(transactionUuid: string, totalAmount: string, status = "COMPLETE") {
   const { signEsewaMessage } = await import("@/lib/esewa");
   const payload = {
     transaction_code: "MOCK-VERIFIED",
-    status: "COMPLETE",
+    status,
     total_amount: totalAmount,
     transaction_uuid: transactionUuid,
     product_code: "EPAYTEST",
@@ -82,15 +82,36 @@ databaseTest.sequential("checkout database boundaries", () => {
     const started = await checkout.createCheckout(user.id, address, preview.token);
     if ("error" in started) throw new Error(started.error);
     const payment = await prisma.payment.findUniqueOrThrow({ where: { id: started.paymentId } });
-    const callback = await signedSuccess(started.transactionId, payment.amount.toString());
+    const callback = await signedResponse(started.transactionId, payment.amount.toString());
     const before = await prisma.product.findUniqueOrThrow({ where: { id: preview.items[0].product.id } });
 
-    await checkout.completeVerifiedPayment(callback);
-    await checkout.completeVerifiedPayment(callback);
+    await expect(checkout.completeVerifiedPayment(callback)).resolves.toMatchObject({ orderId: started.orderId, outcome: "success" });
+    await expect(checkout.completeVerifiedPayment(callback)).resolves.toMatchObject({ orderId: started.orderId, outcome: "success" });
 
     const after = await prisma.product.findUniqueOrThrow({ where: { id: before.id } });
     expect(after.stock).toBe(before.stock - preview.items[0].quantity);
     expect(await prisma.orderTimelineEvent.count({ where: { orderId: started.orderId, type: "PAYMENT_VERIFIED" } })).toBe(1);
     expect(await prisma.cartItem.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it("keeps pending callbacks unresolved and authorizes manual reconciliation", async () => {
+    const [{ prisma }, checkout, { demoIdentities }] = await Promise.all([import("@/lib/prisma"), import("@/lib/checkout-service"), import("@/lib/demo")]);
+    const [owner, anotherUser] = await Promise.all([
+      prisma.user.findUniqueOrThrow({ where: { email: demoIdentities.suraj.email } }),
+      prisma.user.findUniqueOrThrow({ where: { email: demoIdentities.aadarsh.email } }),
+    ]);
+    const preview = await checkout.getCheckoutPreview(owner.id);
+    const started = await checkout.createCheckout(owner.id, address, preview.token);
+    if ("error" in started) throw new Error(started.error);
+    const payment = await prisma.payment.findUniqueOrThrow({ where: { id: started.paymentId } });
+
+    await expect(checkout.completeVerifiedPayment(await signedResponse(started.transactionId, payment.amount.toString(), "PENDING"))).resolves.toEqual({
+      orderId: started.orderId,
+      outcome: "pending",
+    });
+    await expect(checkout.reconcileCustomerPayment(anotherUser.id, started.orderId)).resolves.toEqual({ error: "No unresolved payment is available to check." });
+    await expect(checkout.reconcileCustomerPayment(owner.id, started.orderId)).resolves.toEqual({ orderId: started.orderId, outcome: "pending" });
+    expect(await prisma.payment.findUniqueOrThrow({ where: { id: started.paymentId }, select: { status: true } })).toEqual({ status: "PENDING" });
+    expect(await prisma.order.findUniqueOrThrow({ where: { id: started.orderId }, select: { status: true } })).toEqual({ status: "PENDING" });
   });
 });

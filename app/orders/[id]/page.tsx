@@ -4,8 +4,8 @@ import { getCustomerOrder } from "@/lib/order-service";
 import { humanizeOrderStatus } from "@/lib/orders";
 import requireUser from "@/lib/require-user";
 import { formatNpr } from "@/lib/storefront";
-import { retryPayment } from "./action";
-import { CancelOrderButton, RetryPaymentButton } from "./order-controls";
+import { checkPaymentStatus, retryPayment } from "./action";
+import { CancelOrderButton, CheckPaymentButton, RetryPaymentButton } from "./order-controls";
 import { OrderNotice } from "./order-notice";
 
 function deliveryMessage(status: string) {
@@ -48,6 +48,7 @@ export default async function OrderPage({
 
   const query = await searchParams;
   const retryUnavailable = query.retry === "unavailable";
+  const gatewayUnavailable = query.retry === "gateway-unavailable";
   const cancelMode = order.status === "PAID" ? "paid" : order.status === "PENDING" || order.status === "FAILED" ? "unpaid" : null;
   const latestPayment = order.payments.at(-1);
   const paymentState = latestPayment?.status === "SUCCESS" ? "Paid" : latestPayment ? humanizeOrderStatus(latestPayment.status) : "No payment attempt";
@@ -57,6 +58,8 @@ export default async function OrderPage({
   const paymentFailed = query.payment === "failed"
     && order.status === "FAILED"
     && latestPayment?.status !== "SUCCESS";
+  const paymentPending = query.payment === "pending" && latestPayment?.status === "PENDING";
+  const verificationFailed = query.payment === "verification-failed";
 
   return (
     <main className="shell py-10 sm:py-16">
@@ -89,8 +92,11 @@ export default async function OrderPage({
       </header>
 
       {retryUnavailable && <OrderNotice tone="error">Price, activity, quantity, or stock changed. This payment cannot be retried.</OrderNotice>}
+      {gatewayUnavailable && <OrderNotice tone="error">Payment cannot be started because the eSewa gateway is unavailable.</OrderNotice>}
       {paymentSucceeded && <OrderNotice>Payment confirmed. Your order is ready for delivery.</OrderNotice>}
       {paymentFailed && <OrderNotice tone="error">Payment was not completed. You can retry below.</OrderNotice>}
+      {paymentPending && <OrderNotice>eSewa has not confirmed the payment yet. Your order remains pending; check again before retrying or cancelling.</OrderNotice>}
+      {verificationFailed && <OrderNotice tone="error">The payment response could not be verified. Check the status again or contact support before making another payment.</OrderNotice>}
       {order.status === "REFUND_PENDING" && (
         <aside className="mt-6 border border-[var(--line)] bg-[var(--paper-deep)] p-5" aria-labelledby="refund-pending-title">
           <h2 id="refund-pending-title" className="text-xl font-bold">Refund pending</h2>
@@ -101,7 +107,7 @@ export default async function OrderPage({
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:gap-14">
         <section aria-labelledby="purchase-title">
           <div className="flex items-end justify-between gap-4 border-b border-[var(--line)] pb-4">
-            <h2 id="purchase-title" className="text-3xl font-bold tracking-[-0.04em]">Purchase snapshot</h2>
+            <h2 id="purchase-title" className="text-3xl font-bold tracking-[-0.04em]">Items</h2>
             <p className="text-sm text-[var(--muted)]">{order.orderItems.reduce((total, item) => total + item.quantity, 0)} items</p>
           </div>
           <ul className="divide-y divide-[var(--line-soft)]">
@@ -125,7 +131,7 @@ export default async function OrderPage({
 
         <div className="space-y-10">
           <section aria-labelledby="delivery-title">
-            <h2 id="delivery-title" className="border-b border-[var(--line)] pb-4 text-3xl font-bold tracking-[-0.04em]">Delivery snapshot</h2>
+            <h2 id="delivery-title" className="border-b border-[var(--line)] pb-4 text-3xl font-bold tracking-[-0.04em]">Delivery details</h2>
             <p className="mt-5 font-semibold">{deliveryMessage(order.status)}</p>
             <address className="mt-4 not-italic leading-7 text-[var(--muted)]">
               <span className="text-[var(--ink)]">{order.recipientName}</span><br />
@@ -150,6 +156,13 @@ export default async function OrderPage({
               <form action={retryPayment} className="mt-6">
                 <input type="hidden" name="orderId" value={order.id} />
                 <RetryPaymentButton />
+              </form>
+            )}
+            {latestPayment?.status === "PENDING" && (
+              <form action={checkPaymentStatus} className="mt-6">
+                <input type="hidden" name="orderId" value={order.id} />
+                <CheckPaymentButton />
+                <p className="mt-3 text-sm text-[var(--muted)]">Checks this attempt directly with eSewa. Pending or unavailable responses do not fail your order.</p>
               </form>
             )}
             {cancelMode && <p className="mt-5 text-sm text-[var(--muted)]">{cancelMode === "paid" ? "Cancellation starts a manual refund. Delivery will stop." : "Cancelling releases reserved stock and closes this order."}</p>}

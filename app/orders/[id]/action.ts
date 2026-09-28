@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { retryCheckout } from "@/lib/checkout-service";
+import { reconcileCustomerPayment, retryCheckout } from "@/lib/checkout-service";
+import { getEsewaConfig } from "@/lib/esewa-gateway";
 import { cancelCustomerOrder } from "@/lib/order-service";
 import requireUser from "@/lib/require-user";
 
@@ -23,7 +24,22 @@ export async function retryPayment(formData: FormData) {
   const userId = await requireUser();
   const orderId = formData.get("orderId");
   if (typeof orderId !== "string") return;
+  try {
+    getEsewaConfig();
+  } catch {
+    redirect(`/orders/${orderId}?retry=gateway-unavailable`);
+  }
   const result = await retryCheckout(userId, orderId);
   if ("error" in result) redirect(`/orders/${orderId}?retry=unavailable`);
   redirect(`/checkout/pay/${result.paymentId}`);
+}
+
+export async function checkPaymentStatus(formData: FormData) {
+  const userId = await requireUser();
+  const orderId = formData.get("orderId");
+  if (typeof orderId !== "string") return;
+  const result = await reconcileCustomerPayment(userId, orderId);
+  if ("error" in result) redirect(`/orders/${orderId}?payment=verification-failed`);
+  revalidatePath(`/orders/${orderId}`);
+  redirect(`/orders/${orderId}?payment=${result.outcome}`);
 }

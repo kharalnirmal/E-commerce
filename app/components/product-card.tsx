@@ -29,7 +29,7 @@ export function ProductCard({ product }: ProductCardProps) {
               proxyPath={`/api/catalog-image/product/${product.id}`}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-xs uppercase tracking-widest">Image coming soon</div>
+            <div className="flex h-full items-center justify-center text-xs text-[var(--muted)]">No image available</div>
           )}
           {product.stock === 0 && (
             <span className="availability-tag absolute left-3 top-3">

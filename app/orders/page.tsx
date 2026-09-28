@@ -28,7 +28,7 @@ export default async function OrdersPage() {
     <main className="shell py-12 sm:py-20">
       <header className="border-b border-[var(--line)] pb-8 sm:flex sm:items-end sm:justify-between sm:gap-8">
         <div>
-          <h1 className="text-6xl font-bold leading-[0.88] tracking-[-0.07em] sm:text-8xl">ORDER / LOG</h1>
+          <h1 className="text-6xl font-bold leading-[0.88] tracking-[-0.07em] sm:text-8xl">Orders</h1>
           <p className="mt-5 max-w-xl text-lg text-[var(--muted)]">Orders, payments and delivery updates, kept together.</p>
         </div>
         {orders.length > 0 && <p className="mt-6 shrink-0 text-sm text-[var(--muted)] sm:mt-0">{orders.length} {orders.length === 1 ? "order" : "orders"}</p>}

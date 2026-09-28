@@ -159,43 +159,25 @@ export async function retryCheckout(userId: string, orderId: string, now = new D
   });
 }
 
-export async function abandonPayment(transactionId: string, now = new Date()) {
-  return prisma.$transaction(async (tx) => {
-    await lockInventory(tx);
-    const payment = await tx.payment.findUnique({ where: { transactionId }, include: { reservation: true } });
-    if (!payment || payment.status !== PaymentStatus.PENDING) return payment?.orderId ?? null;
-    await tx.payment.update({ where: { id: payment.id }, data: { status: PaymentStatus.ABANDONED, failureReason: "Shopper returned from eSewa without a verified payment." } });
-    if (payment.reservation) await tx.inventoryReservation.update({ where: { id: payment.reservation.id }, data: { releasedAt: now } });
-    await tx.order.update({ where: { id: payment.orderId }, data: { status: "FAILED", timeline: { create: { type: "PAYMENT_ABANDONED", detail: `Payment attempt ${payment.attemptNumber} was abandoned.`, dedupeKey: `payment-abandoned:${payment.id}` } } } });
-    return payment.orderId;
-  });
-}
+type PaymentOutcome = "success" | "failed" | "pending" | "verification-failed";
 
-export async function completeVerifiedPayment(encodedData: string, now = new Date()) {
-  const config = getEsewaConfig();
-  const response = decodeAndVerifyEsewaResponse(encodedData, config.secret);
-  const payment = await prisma.payment.findUnique({ where: { transactionId: response.transactionUuid }, select: { amount: true } });
-  if (!payment) throw new Error("eSewa payment details do not match this attempt.");
-  if (response.productCode !== config.productCode || rupeesToPaisa(response.totalAmount) !== rupeesToPaisa(payment.amount)) {
-    await failPaymentAttempt(response.transactionUuid, "Signed eSewa details did not match the recorded attempt.", now);
-    throw new Error("eSewa payment details do not match this attempt.");
-  }
-  if (!(await verifyEsewaTransaction(response, rupeesToPaisa(payment.amount), config))) {
-    await failPaymentAttempt(response.transactionUuid, "eSewa did not verify the transaction as complete.", now);
-    throw new Error("eSewa did not verify this payment as complete.");
-  }
+type PaymentResult = {
+  orderId: string;
+  outcome: PaymentOutcome;
+};
 
+async function finalizeVerifiedPayment(transactionId: string, transactionCode: string, now: Date): Promise<PaymentResult> {
   const result = await prisma.$transaction(async (tx) => {
     await lockInventory(tx);
-    const attempt = await tx.payment.findUniqueOrThrow({ where: { transactionId: response.transactionUuid }, include: { reservation: { include: { items: true } }, order: { include: { orderItems: true } } } });
-    if (attempt.status === PaymentStatus.SUCCESS) return attempt.orderId;
+    const attempt = await tx.payment.findUniqueOrThrow({ where: { transactionId }, include: { reservation: { include: { items: true } }, order: { include: { orderItems: true } } } });
+    if (attempt.status === PaymentStatus.SUCCESS) return { orderId: attempt.orderId, outcome: "success" } as const;
     if (attempt.status !== PaymentStatus.PENDING || !attempt.reservation || attempt.reservation.releasedAt || attempt.reservation.consumedAt || attempt.reservation.expiresAt <= now) {
       if (attempt.status === PaymentStatus.PENDING) {
         await tx.payment.update({ where: { id: attempt.id }, data: { status: PaymentStatus.FAILED, failureReason: "Verified payment arrived after its reservation expired." } });
         if (attempt.reservation && !attempt.reservation.releasedAt && !attempt.reservation.consumedAt) await tx.inventoryReservation.update({ where: { id: attempt.reservation.id }, data: { releasedAt: now } });
-        await tx.order.update({ where: { id: attempt.orderId }, data: { status: "FAILED", timeline: { create: { type: "PAYMENT_FAILED", detail: "Verified payment arrived after the reservation expired.", dedupeKey: `payment-expired:${attempt.id}` } } } });
+        await tx.order.update({ where: { id: attempt.orderId }, data: { status: "FAILED", timeline: { create: { type: "PAYMENT_FAILED", detail: "Verified payment arrived after the reservation expired. Contact support before retrying.", dedupeKey: `payment-expired:${attempt.id}` } } } });
       }
-      return { error: "The inventory reservation expired before payment verification." } as const;
+      return { orderId: attempt.orderId, outcome: "verification-failed" } as const;
     }
     const productIds = attempt.reservation.items.map((item) => item.productId).sort();
     await tx.$queryRaw`SELECT "id" FROM "product" WHERE "id" = ANY(${productIds}) ORDER BY "id" FOR UPDATE`;
@@ -205,15 +187,71 @@ export async function completeVerifiedPayment(encodedData: string, now = new Dat
       const updated = await tx.product.update({ where: { id: item.productId }, data: { stock: { decrement: item.quantity } }, select: { stock: true } });
       await tx.stockAdjustment.create({ data: { productId: item.productId, actorLabel: "Verified eSewa checkout", delta: -item.quantity, reason: `Order ${attempt.order.displayNumber}`, resultingStock: updated.stock } });
     }
-    await tx.payment.update({ where: { id: attempt.id }, data: { status: PaymentStatus.SUCCESS, gatewayTransactionCode: response.transactionCode, verifiedAt: now, failureReason: null } });
+    await tx.payment.update({ where: { id: attempt.id }, data: { status: PaymentStatus.SUCCESS, gatewayTransactionCode: transactionCode, verifiedAt: now, failureReason: null } });
     await tx.inventoryReservation.update({ where: { id: attempt.reservation.id }, data: { consumedAt: now } });
     await tx.order.update({ where: { id: attempt.orderId }, data: { status: "PAID", timeline: { create: { type: "PAYMENT_VERIFIED", detail: "eSewa payment verified and order confirmed.", dedupeKey: `payment-success:${attempt.id}` } } } });
     for (const item of attempt.order.orderItems) {
       await tx.cartItem.deleteMany({ where: { id: item.cartItemId, userId: attempt.order.userId, productId: item.productId, quantity: item.quantity } });
     }
-    return attempt.orderId;
+    return { orderId: attempt.orderId, outcome: "success" } as const;
   });
-  if (typeof result !== "string") throw new Error(result.error);
+  return result;
+}
+
+async function reconcileRecordedPayment(transactionId: string, transactionCode = "", now = new Date()): Promise<PaymentResult | null> {
+  const config = getEsewaConfig();
+  const payment = await prisma.payment.findUnique({ where: { transactionId }, select: { amount: true, orderId: true, status: true, gatewayTransactionCode: true } });
+  if (!payment) return null;
+  if (payment.status === PaymentStatus.SUCCESS) return { orderId: payment.orderId, outcome: "success" };
+  if (payment.status !== PaymentStatus.PENDING) return { orderId: payment.orderId, outcome: "failed" };
+  const response = {
+    transactionUuid: transactionId,
+    transactionCode,
+    status: "PENDING",
+    totalAmount: payment.amount.toString(),
+    productCode: config.productCode,
+  };
+  const verification = await verifyEsewaTransaction(response, rupeesToPaisa(payment.amount), config);
+  if (verification.outcome === "pending" || verification.outcome === "unavailable") return { orderId: payment.orderId, outcome: "pending" };
+  if (verification.outcome === "mismatch") return { orderId: payment.orderId, outcome: "verification-failed" };
+  if (verification.outcome === "complete") return finalizeVerifiedPayment(transactionId, verification.referenceId ?? transactionCode, now);
+  const reason = "eSewa reported that the payment was not completed.";
+  await failPaymentAttempt(transactionId, reason, now);
+  return { orderId: payment.orderId, outcome: "failed" };
+}
+
+export async function completeVerifiedPayment(encodedData: string, now = new Date()): Promise<PaymentResult> {
+  const config = getEsewaConfig();
+  const response = decodeAndVerifyEsewaResponse(encodedData, config.secret);
+  const payment = await prisma.payment.findUnique({ where: { transactionId: response.transactionUuid }, select: { amount: true, orderId: true } });
+  if (!payment) throw new Error("eSewa payment details do not match this attempt.");
+  if (response.productCode !== config.productCode || rupeesToPaisa(response.totalAmount) !== rupeesToPaisa(payment.amount)) {
+    return { orderId: payment.orderId, outcome: "verification-failed" };
+  }
+  if (response.status !== "COMPLETE") return reconcileRecordedPayment(response.transactionUuid, response.transactionCode, now) as Promise<PaymentResult>;
+  const verification = await verifyEsewaTransaction(response, rupeesToPaisa(payment.amount), config);
+  if (verification.outcome === "pending" || verification.outcome === "unavailable") return { orderId: payment.orderId, outcome: "pending" };
+  if (verification.outcome === "mismatch") return { orderId: payment.orderId, outcome: "verification-failed" };
+  if (verification.outcome !== "complete") {
+    await failPaymentAttempt(response.transactionUuid, "eSewa reported that the payment was not completed.", now);
+    return { orderId: payment.orderId, outcome: "failed" };
+  }
+  return finalizeVerifiedPayment(response.transactionUuid, verification.referenceId ?? response.transactionCode, now);
+}
+
+export async function reconcileReturnedPayment(transactionId: string, now = new Date()) {
+  return reconcileRecordedPayment(transactionId, "", now);
+}
+
+export async function reconcileCustomerPayment(userId: string, orderId: string, now = new Date()) {
+  const payment = await prisma.payment.findFirst({
+    where: { orderId, order: { userId }, status: PaymentStatus.PENDING },
+    orderBy: { attemptNumber: "desc" },
+    select: { transactionId: true },
+  });
+  if (!payment) return { error: "No unresolved payment is available to check." } as const;
+  const result = await reconcileRecordedPayment(payment.transactionId, "", now);
+  if (!result) return { error: "Payment attempt not found." } as const;
   return result;
 }
 

@@ -19,7 +19,8 @@ async function fillCheckout(page: Page) {
   await prepareCheckout(page);
   await page.getByRole("button", { name: "Reserve and continue to eSewa" }).click();
   await expect(page.getByRole("heading", { name: "Inventory reserved." })).toBeVisible({ timeout: 30_000 });
-  return (await page.getByText(/^CHK-\d{4}-\d+$/).textContent())!;
+  const context = (await page.getByText(/Order CHK-\d{4}-\d+/).textContent())!;
+  return context.match(/CHK-\d{4}-\d+/)?.[0] ?? "";
 }
 
 async function signIn(page: Page, email: string) {
@@ -51,6 +52,7 @@ async function failCurrentPayment(page: Page) {
   const transactionUuid = await page.locator('input[name="transaction_uuid"]').inputValue();
   const totalAmount = await page.locator('input[name="total_amount"]').inputValue();
   const successUrl = await page.locator('input[name="success_url"]').inputValue();
+  const failureUrl = await page.locator('input[name="failure_url"]').inputValue();
   const payload = {
     transaction_code: "MOCK-DECLINED",
     status: "PENDING",
@@ -61,7 +63,10 @@ async function failCurrentPayment(page: Page) {
   };
   const message = payload.signed_field_names.split(",").map((field) => `${field}=${payload[field as keyof typeof payload]}`).join(",");
   const data = Buffer.from(JSON.stringify({ ...payload, signature: signEsewaMessage(message, "test-only-esewa-secret") })).toString("base64");
-  await page.goto(`${successUrl}?data=${encodeURIComponent(data)}`);
+  const callbackUrl = new URL(successUrl);
+  callbackUrl.searchParams.set("data", data);
+  await page.goto(callbackUrl.toString());
+  return failureUrl;
 }
 
 test("customer cancellation and administrator refund workflows remain auditable", async ({ page }) => {
@@ -69,18 +74,15 @@ test("customer cancellation and administrator refund workflows remain auditable"
   await switchIdentity(page, "Suraj");
 
   await page.goto("/cart");
-  const unpaidNumber = await fillCheckout(page);
-  await failCurrentPayment(page);
-  await page.goto(`/orders/${unpaidNumber}`);
-  await expect(page.getByRole("heading", { name: "Failed", exact: true })).toBeVisible();
-  await expect(page.getByRole("paragraph").filter({ hasText: /^Failed$/ })).toBeVisible();
-  await page.getByRole("button", { name: "Retry payment" }).click();
-  const failureUrl = await page.locator('input[name="failure_url"]').inputValue();
+  await fillCheckout(page);
+  const failureUrl = await failCurrentPayment(page);
+  await expect(page.getByRole("heading", { name: "Pending", exact: true })).toBeVisible();
+  await expect(page.getByText("eSewa has not confirmed the payment yet.")).toBeVisible();
+  await page.getByRole("button", { name: "Check payment status" }).click();
+  await expect(page).toHaveURL(/payment=pending/);
   await page.goto(failureUrl);
-  await expect(page.getByRole("heading", { name: "Failed", exact: true })).toBeVisible();
-  await expect(page.getByRole("paragraph").filter({ hasText: /^Abandoned$/ })).toBeVisible();
-  await page.getByRole("button", { name: "Retry payment" }).click();
-  await page.goto(`/orders/${unpaidNumber}`);
+  await expect(page.getByRole("heading", { name: "Pending", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/payment=pending/);
   await page.getByRole("button", { name: "Cancel order" }).click();
   await expect(page.getByRole("heading", { name: "Cancelled", exact: true })).toBeVisible();
   await expect(page.getByText("Customer cancelled the unpaid order.")).toBeVisible();

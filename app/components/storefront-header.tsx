@@ -18,7 +18,7 @@ export function StorefrontHeader() {
         <div className="ml-auto hidden items-center gap-3 md:flex">
           <GlobalSearch />
           <Link href="/cart" className="utility-label px-2">Cart</Link>
-          <Link href="/sign-in" className="utility-label px-2">Account</Link>
+          <Link href="/account" className="utility-label px-2">Account</Link>
           <ThemeToggle />
         </div>
         <div className="ml-auto flex items-center gap-2 md:hidden">

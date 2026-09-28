@@ -51,7 +51,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
         <span className="text-[var(--ink)]">{product.name}</span>
       </nav>
       <div className="grid gap-10 lg:grid-cols-[1.12fr_.88fr] lg:gap-16">
-        {images.length ? <ProductGallery productName={product.name} images={images} /> : <div className="image-frame aspect-[4/5] flex items-center justify-center">Image coming soon</div>}
+        {images.length ? <ProductGallery productName={product.name} images={images} /> : <div className="image-frame aspect-[4/5] flex items-center justify-center text-[var(--muted)]">No image available</div>}
         <div className="flex flex-col lg:py-6">
           <h1 className="product-title">{product.name}</h1>
           <p className="mt-4 text-sm text-[var(--muted)]">{product.category.name} / {product.origin}</p>

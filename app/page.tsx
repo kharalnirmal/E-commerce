@@ -69,8 +69,8 @@ export default async function Home() {
       <OpeningSequence />
       <section className="shell hero-grid">
         <div className="hero-copy">
-          <h1 className="display" data-testid="kinetic-hero">Objects<br />worth meeting.</h1>
-          <p className="hero-intro">CHOWK brings useful, expressive goods from Nepal and beyond into one considered marketplace.</p>
+          <h1 className="display" data-testid="kinetic-hero">Goods for<br />daily use.</h1>
+          <p className="hero-intro">Shop clothing, homeware, accessories, and outdoor goods from independent makers.</p>
           <div className="flex flex-wrap gap-3">
             <Link href="/products" className="button-primary">Shop the catalog</Link>
             <Link href="#collections" className="button-secondary">Browse collections</Link>
@@ -79,22 +79,22 @@ export default async function Home() {
         <div className="hero-image">
           <Image
             src="https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=85"
-            alt="A lively street scene in Kathmandu"
+            alt="A busy market street in Nepal"
             fill
             preload
             sizes="(max-width: 1024px) 100vw, 44vw"
             className="object-cover"
           />
-          <span className="image-caption">Kathmandu, Nepal</span>
+          <span className="image-caption">Nepal</span>
         </div>
       </section>
 
-      <ProductSection id="featured" title="Featured now" description="A compact edit chosen for material, utility, and point of view." products={featured} />
-      <ProductSection id="arrivals" title="New arrivals" description="The latest additions across every part of the market." products={arrivals} tone="muted" />
+      <ProductSection id="featured" title="Featured now" description="Selected products from the current catalog." products={featured} />
+      <ProductSection id="arrivals" title="New arrivals" description="Recently added products." products={arrivals} tone="muted" />
 
       <section id="collections" className="shell discovery-section">
-        <SectionHeading title="Shop by collection" description="Move through the catalog by how an object lives with you." href="/products" />
-        <div className="collection-grid">
+        <SectionHeading title="Shop by collection" description="Browse products by category." href="/products" />
+        {categories.length ? <div className="collection-grid">
           {categories.map((category) => (
             <Link key={category.slug} href={`/products?category=${category.slug}`} className="collection-link">
               <div className="image-frame aspect-[3/2]">
@@ -107,11 +107,11 @@ export default async function Home() {
               </div>
             </Link>
           ))}
-        </div>
+        </div> : <p className="text-[var(--muted)]">Collections are not available right now. Browse the full catalog instead.</p>}
       </section>
 
-      <ProductSection id="trending" title="Trending at CHOWK" description="Products drawing attention across the market right now." products={trending} />
-      <ProductSection id="recommended" title="Worth another look" description="Everyday pieces selected from across our makers and collections." products={recommendations} tone="muted" />
+      <ProductSection id="trending" title="Trending" description="Products receiving the most views." products={trending} />
+      <ProductSection id="recommended" title="More to browse" description="Products from across the catalog." products={recommendations} tone="muted" />
     </main>
   );
 }
@@ -129,6 +129,7 @@ function ProductSection({
   products: Parameters<typeof ProductCard>[0]["product"][];
   tone?: "muted";
 }) {
+  if (!products.length) return null;
   return (
     <section id={id} className={tone === "muted" ? "discovery-band" : "shell discovery-section"}>
       <div className={tone === "muted" ? "shell" : undefined}>
