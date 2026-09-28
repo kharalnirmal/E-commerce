@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, PrismaClient } from "@/generated/prisma/client";
 //after installation of prisma and client  run "npx prisma generate" to get prisma client
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -15,8 +15,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
+const cachedPrisma = globalForPrisma.prisma;
+// Prisma generation can add delegates while Next.js retains the old client across hot reloads.
+const cachedClientIsCurrent = cachedPrisma && Object.values(Prisma.ModelName).every((modelName) => {
+  const delegateName = `${modelName[0].toLowerCase()}${modelName.slice(1)}`;
+  return delegateName in cachedPrisma;
+});
+
 export const prisma =
-  globalForPrisma.prisma ??
+  (cachedClientIsCurrent ? cachedPrisma : undefined) ??
   new PrismaClient({
     adapter,
     transactionOptions: { maxWait: 10_000, timeout: 15_000 },
