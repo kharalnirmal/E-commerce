@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import requireAdmin from "@/lib/require-admin";
 import { revalidatePath } from "next/cache";
+import { slugify } from "@/lib/storefront";
 
 type State = { message: string };
 export async function createProduct(
@@ -60,10 +61,11 @@ export async function createProduct(
       const url = new URL(imageUrl);
 
       if (
-        !["http:", "https:"].includes(url.protocol) ||
+        url.protocol !== "https:" ||
+        url.hostname !== "images.unsplash.com" ||
         imageUrl.length > 2048
       ) {
-        return { message: "Enter a valid HTTP or HTTPS image URL." };
+        return { message: "Enter a valid images.unsplash.com URL." };
       }
     } catch {
       return { message: "Enter a valid image URL." };
@@ -78,9 +80,22 @@ export async function createProduct(
     return { message: "Choose a valid category." };
   }
 
+  const slug = slugify(name) || "product";
+  const duplicateSlug = await prisma.product.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+
+  if (duplicateSlug) {
+    return { message: "A product with this name already exists." };
+  }
+
   await prisma.product.create({
     data: {
       name,
+      slug,
+      maker: "Independent maker",
+      origin: "Nepal",
       description: description || null,
       price,
       stock,

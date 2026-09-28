@@ -7,7 +7,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:server": "vitest run",
+    "test:e2e": "playwright test",
+    "test:db:prepare": "node scripts/prepare-test-db.mjs",
+    "seed": "prisma db seed"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.5",
@@ -20,6 +26,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@prisma/client": "^7.10.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -31,6 +38,8 @@
     "eslint-config-next": "16.3.5",
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }

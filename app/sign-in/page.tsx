@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
+import Link from "next/link";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -37,21 +38,25 @@ export default function SignInPage() {
   }
 
   return (
-    <main>
-      <h1>Sign in</h1>
+    <main className="shell grid min-h-[70vh] place-items-center py-16">
+      <section className="brutal-card w-full max-w-lg p-6 sm:p-10">
+      <p className="utility-label text-[var(--vermilion)]">Welcome back</p>
+      <h1 className="mt-2 text-5xl font-bold tracking-[-0.06em]">Sign in</h1>
 
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" required />
+      <form onSubmit={handleSubmit} className="mt-8 grid gap-3">
+        <label htmlFor="email" className="utility-label">Email</label>
+        <input id="email" name="email" type="email" required className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3" />
 
-        <label htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" required />
+        <label htmlFor="password" className="utility-label mt-2">Password</label>
+        <input id="password" name="password" type="password" required className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3" />
 
         {error && <p role="alert">{error}</p>}
-        <button disabled={pending}>
+        <button disabled={pending} className="button-primary mt-3">
           {pending ? "Signing in..." : "Sign in"}
         </button>
       </form>
+      <p className="mt-6 text-sm">New to CHAUK? <Link href="/sign-up" className="font-bold underline">Create an account</Link>.</p>
+      </section>
     </main>
   );
 }

@@ -32,7 +32,7 @@ export function SignOutButton() {
 
   return (
     <>
-      <button type="button" onClick={handleSignOut} disabled={pending}>
+      <button type="button" onClick={handleSignOut} disabled={pending} className="button-secondary">
         {pending ? "Signing out..." : "Sign out"}
       </button>
       {error && <p role="alert">{error}</p>}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { slugify } from "@/lib/storefront";
 import requireAdmin from "@/lib/require-admin";
 
 type State = { message: string };
@@ -20,7 +21,22 @@ export async function createCategory(
   }
 
   try {
-    await prisma.category.create({ data: { name } });
+    const slug = slugify(name);
+
+    if (!slug) {
+      return { message: "Name must include letters or numbers." };
+    }
+
+    const duplicateSlug = await prisma.category.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (duplicateSlug) {
+      return { message: "A category with this name already exists." };
+    }
+
+    await prisma.category.create({ data: { name, slug } });
   } catch (error) {
     if (
       error !== null &&
@@ -35,5 +51,6 @@ export async function createCategory(
   }
 
   revalidatePath("/admin/categories");
+  revalidatePath("/");
   return { message: "Category created." };
 }

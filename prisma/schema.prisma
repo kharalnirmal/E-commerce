@@ -98,6 +98,10 @@ model Verification {
 model Category {
   id        String    @id @default(cuid())
   name      String    @unique
+  slug      String    @unique
+  description String?
+  imageUrl  String?
+  position  Int       @default(0)
   products  Product[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -108,6 +112,10 @@ model Category {
 model Product {
   id           String        @id @default(cuid())
   name         String
+  slug         String        @unique
+  maker        String
+  origin       String
+  featured     Boolean       @default(false)
   description  String?
   price        Decimal       @db.Decimal(12, 2)
   stock        Int           @default(0)

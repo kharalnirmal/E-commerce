@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signUp } from "@/lib/auth-client";
+import Link from "next/link";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -38,30 +39,35 @@ export default function SignUpPage() {
   }
 
   return (
-    <main>
-      <h1>Create an account</h1>
+    <main className="shell grid min-h-[70vh] place-items-center py-16">
+      <section className="brutal-card w-full max-w-lg p-6 sm:p-10">
+      <p className="utility-label text-[var(--vermilion)]">Join the market</p>
+      <h1 className="mt-2 text-5xl font-bold tracking-[-0.06em]">Create an account</h1>
 
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="name">Name</label>
-        <input id="name" name="name" required />
+      <form onSubmit={handleSubmit} className="mt-8 grid gap-3">
+        <label htmlFor="name" className="utility-label">Name</label>
+        <input id="name" name="name" required className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3" />
 
-        <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" required />
+        <label htmlFor="email" className="utility-label mt-2">Email</label>
+        <input id="email" name="email" type="email" required className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3" />
 
-        <label htmlFor="password">Password</label>
+        <label htmlFor="password" className="utility-label mt-2">Password</label>
         <input
           id="password"
           name="password"
           type="password"
           minLength={8}
           required
+          className="min-h-12 rounded-lg border-2 border-[var(--line)] bg-[var(--paper)] px-3"
         />
 
         {error && <p role="alert">{error}</p>}
-        <button disabled={pending}>
+        <button disabled={pending} className="button-primary mt-3">
           {pending ? "Creating account..." : "Sign up"}
         </button>
       </form>
+      <p className="mt-6 text-sm">Already a member? <Link href="/sign-in" className="font-bold underline">Sign in</Link>.</p>
+      </section>
     </main>
   );
 }

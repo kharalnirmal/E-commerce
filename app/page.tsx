@@ -1,69 +1,133 @@
 import Image from "next/image";
+import Link from "next/link";
+import { ProductCard } from "@/app/components/product-card";
+import { prisma } from "@/lib/prisma";
 
-export default function Home() {
+export default async function Home() {
+  const [featured, categories] = await Promise.all([
+    prisma.product.findMany({
+      where: { featured: true },
+      take: 6,
+      orderBy: { createdAt: "desc" },
+      select: {
+        name: true,
+        slug: true,
+        maker: true,
+        origin: true,
+        price: true,
+        stock: true,
+        imageUrl: true,
+        category: { select: { name: true } },
+      },
+    }),
+    prisma.category.findMany({
+      orderBy: [{ position: "asc" }, { name: "asc" }],
+      select: { name: true, slug: true, description: true, imageUrl: true },
+    }),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main>
+      <section className="shell grid min-h-[calc(100svh-5rem)] items-center gap-10 py-12 lg:grid-cols-[1.2fr_.8fr]">
+        <div className="relative z-10">
+          <p className="utility-label mb-6">Kathmandu · 27.7172° N</p>
+          <h1 className="display" data-testid="kinetic-hero">
+            <span className="hero-word">GOODS</span>
+            <br />
+            <span className="hero-word hero-word-late"><span className="editorial font-normal text-[var(--vermilion)]">meet</span> HERE.</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+          <div className="mt-10 flex max-w-xl flex-col items-start gap-6 border-l-2 border-[var(--line)] pl-5 sm:flex-row sm:items-end">
+            <p className="text-lg leading-relaxed">
+              A contemporary crossroads for useful, expressive goods from Nepali makers and the wider world.
+            </p>
+            <Link href="/products" className="button-primary shrink-0">Enter the market</Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-lg rotate-2 overflow-hidden rounded-[2rem] border-2 border-[var(--line)] shadow-[10px_10px_0_var(--line)]">
+          <Image
+            src="https://images.unsplash.com/photo-1605640840605-14ac1855827b?auto=format&fit=crop&w=1200&q=85"
+            alt="Colorful prayer flags crossing a Kathmandu street"
+            fill
+            preload
+            sizes="(max-width: 1024px) 90vw, 38vw"
+            className="object-cover"
+          />
+          <p className="utility-label absolute bottom-4 left-4 rounded-full bg-[var(--acid)] px-4 py-3 text-[#171713]">नयाँ दृष्टि / A new view</p>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section id="weekly-edit" className="border-y-2 border-[var(--line)] bg-[var(--paper-deep)] py-20">
+        <div className="shell">
+          <div className="mb-10 grid gap-5 md:grid-cols-2 md:items-end">
+            <div>
+              <p className="utility-label text-[var(--vermilion)]">Weekly edit 01</p>
+              <h2 className="mt-3 text-5xl font-bold tracking-[-0.06em] sm:text-7xl">CITY / RIDGE</h2>
+            </div>
+            <p className="editorial max-w-lg text-2xl leading-snug md:justify-self-end">
+              Six things for the route between a desk in Patan and a cold morning above the valley.
+            </p>
+          </div>
+          {featured.length ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {featured.map((product) => <ProductCard key={product.slug} product={product} />)}
+            </div>
+          ) : (
+            <div className="brutal-card p-10 text-center">The next edit is being assembled.</div>
+          )}
+        </div>
+      </section>
+
+      <section id="categories" className="shell py-24">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="utility-label">Four directions</p>
+            <h2 className="mt-2 text-5xl font-bold tracking-[-0.055em]">Find your way in.</h2>
+          </div>
+          <Link href="/products" className="button-secondary">View everything</Link>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          {categories.map((category, index) => (
+            <Link
+              key={category.slug}
+              href={`/products?category=${category.slug}`}
+              className="group brutal-card grid min-h-72 grid-cols-[1fr_1.2fr] overflow-hidden p-3"
+            >
+              <div className="flex flex-col justify-between p-4">
+                <span className="utility-label">0{index + 1}</span>
+                <div>
+                  <h3 className="text-3xl font-bold tracking-[-0.05em]">{category.name}</h3>
+                  <p className="mt-2 text-sm text-[var(--muted)]">{category.description}</p>
+                </div>
+              </div>
+              <div className="image-frame min-h-64">
+                {category.imageUrl && <Image src={category.imageUrl} alt="" fill sizes="(max-width: 768px) 50vw, 25vw" />}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section aria-label="Kathmandu field note" className="overflow-hidden border-y-2 border-[var(--line)] bg-[var(--acid)] py-6 text-[#171713]">
+        <div className="shell flex flex-wrap items-center justify-between gap-4">
+          <p className="text-3xl font-black tracking-[-0.05em] sm:text-5xl">चोकमा भेटौँ।</p>
+          <p className="editorial max-w-xl text-xl">Meet us at the crossroads, where a useful object always carries a story.</p>
+          <span className="utility-label">Kathmandu field note / 01</span>
+        </div>
+      </section>
+
+      <section className="bg-[var(--vermilion)] py-24 text-[#fff9ed]">
+        <div className="shell grid gap-10 lg:grid-cols-[.7fr_1.3fr]">
+          <p className="utility-label">Our point of view / हाम्रो सोच</p>
+          <div>
+            <h2 className="text-5xl font-bold leading-[.95] tracking-[-0.06em] sm:text-7xl">
+              LOCAL IS A PERSPECTIVE, NOT A LIMIT.
+            </h2>
+            <p className="editorial mt-8 max-w-2xl text-2xl leading-relaxed">
+              CHAUK puts a Patan metalworker beside a global design studio. We choose objects for how they live, last, and speak to one another.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

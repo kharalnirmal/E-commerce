@@ -8,9 +8,8 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not configured.");
 }
 
-const adapter = new PrismaPg({
-  connectionString,
-});
+const schema = new URL(connectionString).searchParams.get("schema") ?? undefined;
+const adapter = new PrismaPg({ connectionString }, { schema });
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
